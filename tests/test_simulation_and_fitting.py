@@ -410,6 +410,8 @@ def test_web_fit_returns_200_with_warning_for_sentinel_solution(monkeypatch: pyt
         _resolved_columns = {"R1": "state_a", "R2": "state_b"}
         fitted_param_dict = {"alpha": 0.5}
         state_names = ["R1", "R2"]
+        def _resolve_col(self, state):
+            return f'state_{state}'
 
         def fit_from_dataframe(self, df, agent_id=None):
             return type("R", (), {"success": True, "fun": 1e12})()
@@ -449,6 +451,9 @@ def test_sentinel_check_precedes_prediction(monkeypatch: pytest.MonkeyPatch) -> 
 
         def __init__(self):
             self._t = np.array([0.0, 1.0])
+
+        def _resolve_col(self, state):
+            return f'state_{state}'
 
         def fit_from_dataframe(self, df, agent_id=None):
             return type("R", (), {"success": True, "fun": 1e12})()
@@ -507,6 +512,8 @@ def test_web_fit_maps_optimizer_failure_to_400(monkeypatch: pytest.MonkeyPatch) 
         _t = None
         _y0 = None
         state_names = ["R1", "R2"]
+        def _resolve_col(self, state):
+            return f'state_{state}'
 
         def fit_from_dataframe(self, df, agent_id=None):
             return type("R", (), {"success": False, "fun": 0.01})()
@@ -534,6 +541,8 @@ def test_web_fit_maps_all_starts_failure_to_400(monkeypatch: pytest.MonkeyPatch)
         _t = None
         _y0 = None
         state_names = ["R1", "R2"]
+        def _resolve_col(self, state):
+            return f'state_{state}'
 
         def fit_robust(self, df, agent_id=None):
             raise RuntimeError("All fitting attempts failed.")
@@ -566,6 +575,8 @@ def test_web_fit_does_not_mask_prediction_failure_as_400(monkeypatch: pytest.Mon
         state_names = ["happiness", "stress"]
         _resolved_columns = {"happiness": "state_happiness", "stress": "state_stress"}
         _y0 = np.array([0.5, 0.3])
+        def _resolve_col(self, state):
+            return f'state_{state}'
 
         def __init__(self):
             self._t = np.array([0.0, 1.0])
@@ -732,6 +743,8 @@ def test_unexpected_fitting_error_keeps_structured_json(monkeypatch: pytest.Monk
         _t = None
         _y0 = None
         state_names = ["R1", "R2"]
+        def _resolve_col(self, state):
+            return f'state_{state}'
 
         def fit_from_dataframe(self, df, agent_id=None):
             raise TypeError("Cannot perform reduction 'mean' with string dtype")
@@ -750,8 +763,12 @@ def test_unexpected_fitting_error_keeps_structured_json(monkeypatch: pytest.Monk
     assert "TypeError" in body["error"] and "string dtype" in body["error"]
 
 
-def test_real_string_column_mapping_yields_structured_500() -> None:
-    """真实路径复现：state_mapping 指向字符串列时也必须返回结构化 JSON 500。"""
+def test_real_string_column_mapping_is_400_invalid_mapping() -> None:
+    """真实路径：state_mapping 指向字符串列属于调用方输入错误，必须返回 400。
+
+    收紧前这里写的是 `status_code in (400, 500)`，把"输入错误"与"服务端故障"
+    的区别断言掉了（复核指出）。现在要求唯一定值 400 + invalid_mapping。
+    """
     fastapi_testclient = pytest.importorskip("fastapi.testclient")
     from family_abm.web.app import app as web_app
 
@@ -760,15 +777,15 @@ def test_real_string_column_mapping_yields_structured_500() -> None:
 
     response = client.post("/api/fit", json={
         "model_name": "wellbeing",
-        # agent_id 是字符串列：拟合时对它求均值会触发 pandas TypeError
+        # agent_id 是字符串列：映射到它属于非法输入
         "state_mapping": {"happiness": "agent_id", "stress": "state_stress"},
         "robust": False,
     })
-    assert response.status_code in (400, 500), response.text
-    assert response.headers["content-type"].startswith("application/json"), response.headers
+    assert response.status_code == 400, response.text
+    assert response.headers["content-type"].startswith("application/json")
     body = response.json()
-    assert body.get("status") in {"fitting_error", "invalid_input"}, body
-    assert body.get("error")
+    assert body["status"] == "invalid_mapping", body
+    assert "agent_id" in body["error"] and "数值列" in body["error"]
 
 
 def test_dashboard_behavior_harness_passes() -> None:

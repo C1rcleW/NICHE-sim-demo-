@@ -48,6 +48,7 @@ function makeElement(id) {
       contains: (c) => classes.has(c),
     },
     addEventListener: () => {},
+    click: () => {},
     querySelector: () => makeElement('nested'),
     querySelectorAll: () => [],
     appendChild: () => {},
@@ -72,8 +73,11 @@ function makeElement(id) {
       element._innerHTML = String(html);
       if (element.id === 'fitModel' || element.id === 'fitAgent') {
         element.options = parseOptions(element._innerHTML);
-        element.selectedIndex = element.options.length ? 0 : -1;
-        if (element.options.length) element._value = element.options[0].value;
+        // 按规范：重建 options 后浏览器选中第一个**未被禁用**的选项
+        // （此前恒取 index 0，遇到首个 option 被 disabled 时与真实行为不一致）
+        const firstEnabled = element.options.findIndex((o) => !o.disabled);
+        element.selectedIndex = firstEnabled;
+        element._value = firstEnabled >= 0 ? element.options[firstEnabled].value : '';
       }
     },
   });
@@ -124,7 +128,11 @@ function loadDashboard(apiResponses, options) {
     // 关键：在**请求发出时**就固定该请求对应的响应，而不是在 resolve 时再取值。
     // 否则乱序 resolve 会让两个请求拿到同一份响应，场景也就失去了判别力。
     const isModelRequest = target.includes('/api/models');
-    const payload = isModelRequest ? apiResponses(target, requests.length) : { defaults: {}, groups: {} };
+    const isFitRequest = target.includes('/api/fit');
+    let payload = apiResponses(target, requests.length);
+    if (payload === undefined) {
+      payload = isFitRequest ? FIT_OK : { defaults: {}, groups: {} };
+    }
     // 只延迟模型列表请求（用于测乱序）；其它请求（如 /api/params）立即返回，
     // 否则页面初始化时的调用会一直挂住。
     if (deferred && isModelRequest) {
@@ -174,6 +182,22 @@ function loadDashboard(apiResponses, options) {
   return { sandbox, get, requests, pendingResolvers };
 }
 
+const FIT_OK = {
+  status: 'ok',
+  model: 'logistic',
+  state_columns: { population: 'state_only' },
+  summary: {
+    model: 'logistic_growth',
+    params: { r: 0.2, K: 1.0 },
+    r_squared: 0.9,
+    converged: true,
+    params_at_bounds: [],
+    hit_sentinel: false,
+  },
+  predict_trace: [],
+  warning: null,
+};
+
 const ALL_DISABLED = {
   models: [
     { name: 'wellbeing', directly_fittable: false, needs_manual_mapping: true, suggested_mapping: null },
@@ -182,6 +206,22 @@ const ALL_DISABLED = {
   ],
   usable_state_columns: [],
   constant_state_columns: ['state_x'],
+};
+
+// 所有模型都可选但都不可直接映射（走 suggested_mapping 路径）：
+// 用它验证"被拦截时不发 /api/fit"，避免像 ALL_DISABLED 那样被
+// currentStateMapping 的 undefined 分支提前拦住，使断言空转。
+const ALL_SELECTABLE_NEEDS_MAPPING = {
+  models: [
+    {
+      name: 'logistic',
+      directly_fittable: false,
+      needs_manual_mapping: false,
+      suggested_mapping: { population: 'state_only' },
+    },
+  ],
+  usable_state_columns: ['state_only'],
+  constant_state_columns: [],
 };
 
 const ONE_AVAILABLE = {
@@ -199,8 +239,9 @@ async function scenarioAllDisabled() {
   // 模拟一次 run 之后的状态
   const sel = get('fitModel');
   get('fitAgent').value = '';
-  await sandbox.loadModelInfo();
+  const state = await sandbox.loadModelInfo();
 
+  check(state === 'none', 'loadModelInfo 返回 none（区分于 error/stale）', String(state));
   check(get('fitRunBtn').disabled === true, '拟合按钮被禁用');
   check(sel.dataset.allDisabled === '1', '标记 allDisabled');
   check(sandbox.fitSelectionBlocked() === true, 'fitSelectionBlocked() 返回 true');
@@ -214,13 +255,84 @@ async function scenarioAllDisabled() {
   check(fitCalls.length === 0, '被拦截时不发起 /api/fit 请求', `实际 ${fitCalls.length} 次`);
 }
 
+async function scenarioBlockedBeforeFit() {
+  console.log('\n== 场景 1b：模型可选但映射缺失时仍应拦住（非空转断言）==');
+  const { sandbox, get, requests } = loadDashboard((url) => (
+    String(url).includes('/api/models') ? ALL_SELECTABLE_NEEDS_MAPPING : undefined
+  ));
+  get('fitAgent').value = '';
+  const state = await sandbox.loadModelInfo();
+
+  check(state === 'ready', 'loadModelInfo 返回 ready');
+  check(get('fitRunBtn').disabled === false, '存在可尝试的模型，按钮可用');
+  // 关键：currentStateMapping 会返回 suggested_mapping（不是 undefined），
+  // 因此流程真的会走到 /api/fit 分支，这里的零请求断言才有意义。
+  check(sandbox.currentStateMapping('logistic') !== undefined, 'currentStateMapping 返回映射而非 undefined');
+
+  const before = requests.length;
+  await sandbox.runFitting();
+  const fitCalls = requests.slice(before).filter((r) => r.url.includes('/api/fit'));
+  check(fitCalls.length === 1, '未被拦截时确实发出 1 次 /api/fit', `实际 ${fitCalls.length} 次`);
+  if (fitCalls.length) {
+    const body = JSON.parse(fitCalls[0].body || '{}');
+    check(body.state_mapping && body.state_mapping.population === 'state_only', '请求携带 suggested_mapping', JSON.stringify(body.state_mapping));
+  }
+}
+
+async function scenarioStaleMappingIsRefreshed() {
+  console.log('\n== 场景 1c：切换 agent 后立刻拟合，映射必须与该 agent 一致 ==');
+  const { sandbox, get, requests } = loadDashboard((url) => {
+    const u = String(url);
+    if (!u.includes('/api/models')) return undefined;
+    return u.includes('agent_id=A')
+      ? { models: [{ name: 'logistic', directly_fittable: false, needs_manual_mapping: false, suggested_mapping: { population: 'state_from_A' } }], usable_state_columns: ['state_from_A'], constant_state_columns: [] }
+      : { models: [{ name: 'logistic', directly_fittable: false, needs_manual_mapping: false, suggested_mapping: { population: 'state_from_B' } }], usable_state_columns: ['state_from_B'], constant_state_columns: [] };
+  });
+  get('fitAgent').value = 'A';
+  await sandbox.loadModelInfo();
+  // 切换到 B 但不等待防抖：runFitting 必须自行重载，不能沿用 A 的映射
+  get('fitAgent').value = 'B';
+  const before = requests.length;
+  await sandbox.runFitting();
+  const fitCalls = requests.slice(before).filter((r) => r.url.includes('/api/fit'));
+  check(fitCalls.length === 1, '发出 1 次 /api/fit', `实际 ${fitCalls.length} 次`);
+  if (fitCalls.length) {
+    const body = JSON.parse(fitCalls[0].body || '{}');
+    check(body.agent_id === 'B', 'agent_id 为最新选择 B', String(body.agent_id));
+    check(
+      body.state_mapping && body.state_mapping.population === 'state_from_B',
+      '映射已刷新为 B 的列（不是陈旧的 A）',
+      JSON.stringify(body.state_mapping),
+    );
+  }
+}
+
+async function scenarioRunSimulationStatus() {
+  console.log('\n== 场景 4：runSimulation 全链路的状态栏与按钮 ==');
+  const { sandbox, get } = loadDashboard((url) => {
+    const u = String(url);
+    if (u.includes('/api/run')) return { status: 'ok', steps: 20, agents: 2, observations: 40 };
+    if (u.includes('/api/data')) return { agents: [], columns: [], data: [], statistics: [], steps: 20 };
+    if (u.includes('/api/models')) return ALL_DISABLED;
+    return {};
+  });
+  await sandbox.runSimulation();
+
+  check(get('fitRunBtn').disabled === true, '全禁用时按钮被禁用');
+  check(
+    String(get('statusText').textContent) === sandbox.t('fitting.none_available'),
+    '状态栏说明"没有可拟合模型"（而不是被"仿真完成"覆盖）',
+    String(get('statusText').textContent),
+  );
+}
+
 async function scenarioOneAvailable() {
   console.log('\n== 场景 2：仅 logistic 可选 ==');
   const { sandbox, get } = loadDashboard(() => ONE_AVAILABLE);
   get('fitAgent').value = '';
-  const ok = await sandbox.loadModelInfo();
+  const state = await sandbox.loadModelInfo();
 
-  check(ok === true, 'loadModelInfo() 返回 true（存在可拟合模型）');
+  check(state === 'ready', 'loadModelInfo 返回 ready（存在可拟合模型）', String(state));
   check(get('fitRunBtn').disabled === false, '拟合按钮可用');
   check(get('fitModel').value === 'logistic', '默认选中唯一可用的 logistic', get('fitModel').value);
   check(get('fitModel').dataset.allDisabled !== '1', '未标记 allDisabled');
@@ -248,17 +360,41 @@ async function scenarioStaleResponseDiscarded() {
   await Promise.resolve();
   await Promise.resolve();
   pendingResolvers[last - 1]();       // 再解析 A（陈旧）
-  await Promise.all([first, second]);
+  const [firstState, secondState] = await Promise.all([first, second]);
+
+  // 直接断言返回态：陈旧调用必须自报 'stale'。
+  // 只断言终态是不够的——若守卫改为返回 'ready'，陈旧响应会覆盖 UI，
+  // 但后续没有新的加载来纠正时终态本身可能恰好仍正确（突变实验证明会漏网）。
+  check(firstState === 'stale', '陈旧调用自报 stale（而不是伪装成 ready）', String(firstState));
+  check(secondState === 'ready', '最新调用返回 ready', String(secondState));
 
   // 后发请求（B）应胜出
   check(get('fitRunBtn').disabled === false, '最终采用最新请求的结果（按钮可用）');
   check(sandbox.fitSelectionBlocked() === false, '陈旧响应未覆盖新响应');
 }
 
+/**
+ * 桩必须与真实 DOM 结构一致：如果模板里关键 id 不存在（或改了名），
+ * 本 harness 用的"凭空造元素"桩仍会全绿，但真实页面会在 setStatus 时
+ * 因 null.textContent 抛错。这里做一次结构校验。
+ */
+function verifyTemplateIds() {
+  console.log('== 场景 0：模板关键 id 与桩一致 ==');
+  const templatePath = path.join(__dirname, '..', 'family_abm', 'web', 'templates', 'index.html');
+  const html = fs.readFileSync(templatePath, 'utf8');
+  const required = ['fitModel', 'fitAgent', 'fitRunBtn', 'fitKPIs', 'fitParams', 'statusText', 'statusDot', 'simSteps', 'familyConfigs', 'paramGroups'];
+  const missingIds = required.filter((id) => !html.includes(`id="${id}"`));
+  check(missingIds.length === 0, '模板包含 harness 依赖的全部 id', missingIds.length ? `缺少 ${JSON.stringify(missingIds)}` : 'ok');
+}
+
 (async () => {
+  verifyTemplateIds();
   await scenarioAllDisabled();
+  await scenarioBlockedBeforeFit();
+  await scenarioStaleMappingIsRefreshed();
   await scenarioOneAvailable();
   await scenarioStaleResponseDiscarded();
+  await scenarioRunSimulationStatus();
   console.log('');
   if (failures.length) {
     console.log(`结果：失败 ${failures.length} 项 -> ${JSON.stringify(failures)}`);

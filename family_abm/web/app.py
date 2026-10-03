@@ -260,7 +260,25 @@ async def api_models(agent_id: Optional[str] = None):
 
 @app.post('/api/fit')
 async def api_fit(req: FitRequest):
-    global _sim_df, _last_fitter
+    try:
+        return await _api_fit_impl(req)
+    except ValueError as exc:
+        return JSONResponse({'error': str(exc), 'status': 'invalid_input'}, 400)
+    except RuntimeError as exc:
+        return JSONResponse({'error': f'{exc}', 'status': 'runtime_error'}, 400)
+    except Exception as exc:
+        # 函数级兜底：任何未预期异常都必须保持结构化 JSON。
+        # 若让它逃出端点，FastAPI 会返回 text/plain "Internal Server Error"，
+        # 前端 api() 只能拿到 JSON 解析错误，排障信息全部丢失。
+        return JSONResponse({
+            'error': f'{type(exc).__name__}: {exc}',
+            'status': 'fitting_error',
+        }, 500)
+
+
+async def _api_fit_impl(req: FitRequest):
+    """api_fit 的实现体；异常处理统一由 api_fit 的函数级兜底负责。"""
+    global _last_fitter
     if _sim_df is None:
         return JSONResponse({'error': 'No simulation data. POST /api/run first.'}, 400)
 
@@ -285,10 +303,22 @@ async def api_fit(req: FitRequest):
             'status': 'unknown_model',
         }, 400)
 
-    # 拟合阶段单独包异常：这样"多起点全失败"(RuntimeError) 与 predict() 失败能被区分。
-    # 末尾必须保留兜底分支：拟合过程中真正未预期的异常（例如 state_mapping 指向字符串列
-    # 触发 pandas 的 TypeError）若逃出函数，FastAPI 会返回 text/plain 的
-    # "Internal Server Error"，前端 api() 只能拿到 JSON 解析错误，排障信息全部丢失。
+    # 显式映射指向非数值列：这是调用方输入错误（不是服务端故障），提前给出 400 与
+    # 可用列清单，而不是等 pandas 抛出 TypeError 再报 500
+    # （复核实测：state_mapping 把状态映射到 agent_id 等字符串列时得到 500 fitting_error）。
+    numeric_columns = set(_sim_df.select_dtypes(include='number').columns)
+    expected_columns = {state: fitter._resolve_col(state) for state in fitter.state_names}
+    invalid = {state: col for state, col in expected_columns.items()
+               if col in _sim_df.columns and col not in numeric_columns}
+    if invalid:
+        return JSONResponse({
+            'error': (
+                f'以下状态映射指向非数值列：{invalid}。可用数值列：'
+                f'{sorted(c for c in numeric_columns if str(c).startswith("state_"))}。'
+            ),
+            'status': 'invalid_mapping',
+        }, 400)
+
     try:
         if req.robust:
             result = fitter.fit_robust(_sim_df, agent_id=req.agent_id)
@@ -302,12 +332,6 @@ async def api_fit(req: FitRequest):
             'error': f'{exc}（多起点拟合全部失败；请检查状态列选择与参数边界，或减少起点数重试）',
             'status': 'all_starts_failed',
         }, 400)
-    except Exception as exc:
-        # 未预期异常：保持结构化 JSON（500 + status），不要退化成纯文本
-        return JSONResponse({
-            'error': f'{type(exc).__name__}: {exc}',
-            'status': 'fitting_error',
-        }, 500)
 
     _last_fitter = fitter
 
@@ -355,7 +379,9 @@ async def api_fit(req: FitRequest):
                 for i in range(fitter.n_states)
             ]
         except Exception as exc:
-            # 预测失败不是输入问题：交回 500 以便暴露真实 bug
+            # 预测失败不是输入问题：返回 500 以便暴露真实 bug。
+            # 必须在实现体内 return（而不是让异常冒泡），否则会被 api_fit 的
+            # RuntimeError 兜底改写成 400 runtime_error，诊断被掩盖。
             return JSONResponse({
                 'error': f'拟合成功但预测轨迹生成失败：{type(exc).__name__}: {exc}',
                 'status': 'prediction_failed',

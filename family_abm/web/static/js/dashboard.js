@@ -33,6 +33,7 @@ const I18N = {
     'fitting.warn_bounds': '参数被边界钉住：{0}（该方向可能不可辨识或边界不合适）。',
     'fitting.warn_r2_nonpositive': 'R² 非正：该模型结构不适合这些状态列，Converged 只表示优化器跑完了。',
     'fitting.none_available': '当前数据下没有可直接拟合的模型（可用状态列过少或全为常量）。',
+    'fitting.models_failed': '无法获取模型列表（/api/models 请求失败）。',
     'charts.niche': '生境空间',
     'fitting.warn': '请先运行仿真，然后选择模型进行拟合。',
     'fitting.title': 'ODE模型拟合（兰彻斯特型）',
@@ -104,6 +105,7 @@ const I18N = {
     'fitting.warn_bounds': 'Parameters pinned at bounds: {0} (that direction may be unidentifiable or the bounds unsuitable).',
     'fitting.warn_r2_nonpositive': 'Non-positive R^2: this model structure does not suit these state columns; Converged only means the optimizer finished.',
     'fitting.none_available': 'No directly fittable model for the current data (too few usable state columns, or all are constant).',
+    'fitting.models_failed': 'Could not load the model list (/api/models failed).',
     'charts.niche': 'Niche Space',
     'fitting.warn': 'Run a simulation first, then select a model to fit.',
     'fitting.title': 'ODE Model Fitting (Lanchester-type)',
@@ -376,12 +378,13 @@ async function runSimulation() {
   buildAgentList();
   // 至少一个模型可拟合才算真正可用；全禁用时状态栏必须说明原因，
   // 不能被下面那句"仿真完成"覆盖（复核指出这正是原因说明不可见的原因）。
-  const hasFittable = await loadModelInfo();
-  if (hasFittable) {
+  const infoState = await loadModelInfo();
+  if (infoState === 'ready') {
     setStatus('ok', t('status.simDone'));
-  } else {
+  } else if (infoState === 'none') {
     setStatus('error', t('fitting.none_available'));
   }
+  // 'error' 分支已由 loadModelInfo 写过状态；'stale' 说明有更新的加载在进行，交给它收尾
   document.querySelector('#tabNav button[data-tab="charts"]').click();
 }
 
@@ -389,11 +392,21 @@ async function runSimulation() {
 // 对应关系，必须显式给出 state_mapping。此前前端只发 model_name/agent_id/robust，
 // 导致 7 个模型里有 6 个在界面上永远返回 400。
 let modelInfo = {};
-let _modelInfoSeq = 0;      // 请求序号：丢弃乱序返回的陈旧响应
+let modelInfoAgentId = null;   // 当前 modelInfo 是按哪个 agent 评估的
+let _modelInfoSeq = 0;         // 请求序号：丢弃乱序返回的陈旧响应
 let _modelInfoDebounce = null;
 
+/**
+ * 按当前选中的 agent 拉取模型可拟合性，并渲染模型下拉。
+ *
+ * 返回三态之一（不要把"陈旧"与"不可拟合"混为一谈）：
+ *   'ready' —— 已按最新选择加载完成
+ *   'none'  —— 加载成功但没有任何模型可拟合
+ *   'error' —— 请求失败
+ *   'stale' —— 期间发起了更新的请求，本次结果被丢弃
+ */
 async function loadModelInfo() {
-  // 按当前选中的 agent 评估可拟合性：拟合到单个 agent 时用的是该 agent 自己的序列，
+  // 拟合到单个 agent 时用的是该 agent 自己的序列，
   // "整体有变化但该 agent 恒定"的列必须按子集重新判定。
   const seq = ++_modelInfoSeq;
   const agentSel = document.getElementById('fitAgent');
@@ -402,17 +415,19 @@ async function loadModelInfo() {
   try {
     res = await api('/api/models' + (agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''));
   } catch (err) {
-    if (seq === _modelInfoSeq) setStatus('error', String(err));
-    return false;
+    if (seq !== _modelInfoSeq) return 'stale';
+    setStatus('error', String(err));
+    return 'error';
   }
-  // 期间又发起了更新的请求：本次结果已陈旧，直接丢弃
-  if (seq !== _modelInfoSeq) return false;
+  // 期间又发起了更新的请求：本次结果已陈旧，直接丢弃（不要写成"不可拟合"）
+  if (seq !== _modelInfoSeq) return 'stale';
   if (res.error || !res.models) {
-    setStatus('error', res.error || '无法获取模型列表');
-    return false;
+    setStatus('error', res.error || t('fitting.models_failed'));
+    return 'error';
   }
   modelInfo = {};
   res.models.forEach(m => { modelInfo[m.name] = m; });
+  modelInfoAgentId = agentId;
 
   const sel = document.getElementById('fitModel');
   const options = res.models.map(m => {
@@ -436,7 +451,7 @@ async function loadModelInfo() {
   if (btn) btn.disabled = !anySelectable;
   sel.dataset.allDisabled = anySelectable ? '' : '1';
   // 状态栏由调用方决定（runSimulation 成功后会写"仿真完成"，此处若也写状态会被覆盖）
-  return anySelectable;
+  return anySelectable ? 'ready' : 'none';
 }
 
 /** agent 下拉的防抖包装：避免快速切换产生并发请求与乱序覆盖。 */
@@ -558,16 +573,40 @@ function buildFittingView() {
   if (sel && sel.dataset.allDisabled === '1') {
     setStatus('error', t('fitting.none_available'));
   }
+  // 若模型信息属于别的 agent（防抖未落定或曾失败），在此补一次加载
+  const agentSel = document.getElementById('fitAgent');
+  const selectedAgent = agentSel ? (agentSel.value || '') : '';
+  if (modelInfoAgentId !== selectedAgent) {
+    loadModelInfo().then((state) => {
+      if (state === 'none') setStatus('error', t('fitting.none_available'));
+    });
+  }
 }
 
 async function runFitting() {
   setStatus('running', t('status.fitting'));
+  const agentSel = document.getElementById('fitAgent');
+  const selectedAgent = agentSel ? (agentSel.value || '') : '';
+
+  // 防抖意味着"切换 agent 后立刻点拟合"时，modelInfo 可能仍属于上一个 agent，
+  // 此时 state_mapping 会指向错误 agent 的列（实测复现：
+  // {"agent_id":"B","state_mapping":{"population":"state_from_A"}}）。
+  // 这里按需同步重载，确保映射与 agent 一致。
+  if (modelInfoAgentId !== selectedAgent) {
+    const state = await loadModelInfo();
+    if (state === 'stale') return;
+    if (modelInfoAgentId !== selectedAgent) {
+      if (state === 'none') setStatus('error', t('fitting.none_available'));
+      return;
+    }
+  }
+
   if (fitSelectionBlocked()) {
     setStatus('error', t('fitting.none_available'));
     return;
   }
   const model = document.getElementById('fitModel').value;
-  const agent = document.getElementById('fitAgent').value || null;
+  const agent = selectedAgent || null;
   const mapping = currentStateMapping(model);
   if (mapping === undefined) {
     // 候选状态列不足以覆盖该模型的状态数：必须由用户显式指定映射，不能瞎猜
