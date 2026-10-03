@@ -178,8 +178,10 @@ def _column_variance_report(df: pd.DataFrame) -> tuple[list[str], list[str], lis
         if series is None:
             unverifiable.append(column)
             continue
+        # 某些 time 分组可能全为 NaN（例如该时段该状态没有有效观测），
+        # dropna 后若一个有效分组都不剩，则无法验证该列的方差，按不可信处理。
         means = series.groupby(df['time']).mean().dropna()
-        if means.empty:
+        if len(means) < 2:
             unverifiable.append(column)
             continue
         span = float(means.max() - means.min())
@@ -188,7 +190,7 @@ def _column_variance_report(df: pd.DataFrame) -> tuple[list[str], list[str], lis
 
 
 @app.get('/api/models')
-async def api_models():
+async def api_models(agent_id: Optional[str] = None):
     """列出可用模型及其状态名、以及相对当前数据的可映射性。
 
     前端据此决定下拉里哪些模型可以直接拟合；对不可直接映射的模型给出**候选**
@@ -203,8 +205,22 @@ async def api_models():
     对"默认映射恰好命中常量列"的模型（例如某些数据下 happiness/stress 为常量），
     ``directly_fittable`` 也必须判为 False —— 否则用户点一下就会得到
     R²≈0 却 converged=True 的误导结果。
+
+    Parameters
+    ----------
+    agent_id : str, optional
+        按单个 agent 评估可拟合性。拟合到单个 agent 时用的是该 agent 自己的序列，
+        因此"整体有变化、但该 agent 恒定"的列必须按该 agent 的子集重新判定。
     """
-    usable, constant, unverifiable = _column_variance_report(_sim_df)
+    frame = _sim_df
+    if agent_id is not None:
+        if frame is None or 'agent_id' not in frame.columns:
+            return JSONResponse({'error': '没有仿真数据或数据缺少 agent_id 列。'}, 400)
+        frame = frame[frame['agent_id'] == agent_id]
+        if frame.empty:
+            return JSONResponse({'error': f'没有 agent_id={agent_id!r} 的记录。'}, 400)
+
+    usable, constant, unverifiable = _column_variance_report(frame)
     flat_columns = set(constant) | set(unverifiable)
 
     models = []
@@ -249,91 +265,101 @@ async def api_fit(req: FitRequest):
     if _sim_df is None:
         return JSONResponse({'error': 'No simulation data. POST /api/run first.'}, 400)
 
-    result = None
-    prediction_error: Exception | None = None
-    try:
-        # 不再自动猜列：默认只用「模型状态名 -> state_<状态名>」这一条显式约定，
-        # 抽象模型必须由请求显式提供 state_mapping。
-        # 历史上静默映射会把模型拟到无关列（甚至方差为 0 的列）上并返回看似
-        # 合理的 R²=0.878。
-        fitter = make_fitter(req.model_name, state_mapping=req.state_mapping)
-
-        # 只给拟合阶段包 try/except：这样"多起点全失败"(RuntimeError) 与
-        # 拟合之后的 predict() 失败能被区分开。
-        # 历史问题：把整个 try 都 catch RuntimeError，会把 predict() 的
-        # RuntimeError 误诊成 all_starts_failed 并丢掉 summary。
-        try:
-            if req.robust:
-                result = fitter.fit_robust(_sim_df, agent_id=req.agent_id)
-            else:
-                result = fitter.fit_from_dataframe(_sim_df, agent_id=req.agent_id)
-        except RuntimeError as e:
-            return JSONResponse({
-                'error': f'{e}（多起点拟合全部失败；请检查状态列选择与参数边界，或减少起点数重试）',
-                'status': 'all_starts_failed',
-            }, 400)
-
-        _last_fitter = fitter
-
-        # 优化器自身失败（超过迭代上限等）属于"模型/边界不适用"，返回 400 并带诊断。
-        if result is None or not bool(getattr(result, 'success', False)):
-            return JSONResponse({
-                'error': (
-                    f'模型 {req.model_name} 的优化未能收敛（optimizer success=False）。'
-                    '常见原因：该模型结构与当前数据量纲不匹配，或参数边界不合适。'
-                    '可尝试放宽 bounds、改选状态列，或改用差分进化全局搜索。'
-                ),
-                'status': 'optimizer_failed',
-                'summary': fitter.summary_json(),
-            }, 400)
-
-        # Build prediction trace
-        if fitter._t is not None and fitter._y0 is not None:
-            try:
-                t_pred = np.linspace(fitter._t[0], fitter._t[-1], 200)
-                _, y_pred = fitter.predict(t_pred, fitter._y0)
-                predict_trace = [
-                    {'t': list(t_pred.astype(float)), 'y': [float(v) for v in y_pred[i]]}
-                    for i in range(fitter.n_states)
-                ]
-            except Exception as exc:  # 预测失败不是输入问题：交回 500 以便暴露真实 bug
-                prediction_error = exc
-                predict_trace = []
-        else:
-            predict_trace = []
-    except ValueError as e:
-        # 状态列无法解析 / 数据不足等可预期的输入问题
-        return JSONResponse({'error': str(e)}, 400)
-    except KeyError as e:
-        # 未知 model_name（make_fitter 抛 KeyError）：同样是调用方输入问题
+    required = {'time'}
+    if req.agent_id is not None:
+        required.add('agent_id')
+    missing = sorted(c for c in required if c not in _sim_df.columns)
+    if missing:
         return JSONResponse({
-            'error': f'未知模型名 {e}。可用模型：{list(MODEL_REGISTRY)}',
+            'error': f'仿真数据缺少必需列 {missing}（当前列：{list(_sim_df.columns)}）。',
+            'status': 'invalid_dataframe',
+        }, 400)
+
+    # 只有"未知模型名"这一种情况应归因于调用方输入；把它限制在 make_fitter 调用上，
+    # 而不是用 `except KeyError` 包住整个流程 —— 否则"数据缺列"之类的 KeyError 会被
+    # 误报成"未知模型名"（复核实测：缺 time/agent_id 列时曾返回 400 unknown_model）。
+    try:
+        fitter = make_fitter(req.model_name, state_mapping=req.state_mapping)
+    except KeyError:
+        return JSONResponse({
+            'error': f'未知模型名 {req.model_name!r}。可用模型：{list(MODEL_REGISTRY)}',
             'status': 'unknown_model',
         }, 400)
-    except Exception as e:
-        return JSONResponse({'error': f'{type(e).__name__}: {e}'}, 500)
 
-    if prediction_error is not None:
+    # 拟合阶段单独包异常：这样"多起点全失败"(RuntimeError) 与 predict() 失败能被区分。
+    try:
+        if req.robust:
+            result = fitter.fit_robust(_sim_df, agent_id=req.agent_id)
+        else:
+            result = fitter.fit_from_dataframe(_sim_df, agent_id=req.agent_id)
+    except ValueError as exc:
+        # 状态列无法解析 / 数据不足等可预期的输入问题
+        return JSONResponse({'error': str(exc), 'status': 'invalid_input'}, 400)
+    except RuntimeError as exc:
         return JSONResponse({
-            'error': f'拟合成功但预测轨迹生成失败：{type(prediction_error).__name__}: {prediction_error}',
-            'status': 'prediction_failed',
-        }, 500)
+            'error': f'{exc}（多起点拟合全部失败；请检查状态列选择与参数边界，或减少起点数重试）',
+            'status': 'all_starts_failed',
+        }, 400)
+
+    _last_fitter = fitter
+
+    # 优化器自身失败（超过迭代上限等）属于"模型/边界不适用"，返回 400 并带诊断。
+    if result is None or not bool(getattr(result, 'success', False)):
+        return JSONResponse({
+            'error': (
+                f'模型 {req.model_name} 的优化未能收敛（optimizer success=False）。'
+                '常见原因：该模型结构与当前数据量纲不匹配，或参数边界不合适。'
+                '可尝试放宽 bounds、改选状态列，或改用差分进化全局搜索。'
+            ),
+            'status': 'optimizer_failed',
+            'summary': fitter.summary_json(),
+        }, 400)
 
     summary = fitter.summary_json()
-    # 命中失败哨兵时**不**返回 400：解虽不可用，但诊断信息（summary）必须能到达界面，
-    # 而前端的告警条只在 HTTP 200 路径上渲染。返回 200 + 显式状态，
-    # 由前端展示"该解未成功积分、R² 无意义"的告警。
-    # （历史问题：这里曾直接 400，导致 dashboard.js 的哨兵告警分支成为死代码。）
+
+    # 哨兵判定必须在 predict 之前：命中哨兵说明解本身未成功积分，再去算预测轨迹
+    # 既浪费又会把结论颠倒（真实场景：resource_competition + robust=false 时
+    # predict 必然失败，曾因此把"模型不适用"错报成 500 prediction_failed）。
+    # 返回 200 + warning，让前端的告警条真正可达（前端对非 200 一律提前 return）。
+    if summary['hit_sentinel']:
+        return JSONResponse({
+            'status': 'model_not_applicable',
+            'model': req.model_name,
+            'state_columns': fitter._resolved_columns,
+            'summary': summary,
+            'predict_trace': [],
+            'prediction_skipped': True,
+            'warning': (
+                f'模型 {req.model_name} 在给定数据与参数边界下未能积分出可用解（优化停留在失败哨兵）；'
+                'R² 与参数估计无意义，预测轨迹已跳过。可尝试放宽 bounds、改选状态列，'
+                '或改用差分进化全局搜索。'
+            ),
+        })
+
+    # Build prediction trace
+    predict_trace: list[dict] = []
+    if fitter._t is not None and fitter._y0 is not None:
+        try:
+            t_pred = np.linspace(fitter._t[0], fitter._t[-1], 200)
+            _, y_pred = fitter.predict(t_pred, fitter._y0)
+            predict_trace = [
+                {'t': list(t_pred.astype(float)), 'y': [float(v) for v in y_pred[i]]}
+                for i in range(fitter.n_states)
+            ]
+        except Exception as exc:
+            # 预测失败不是输入问题：交回 500 以便暴露真实 bug
+            return JSONResponse({
+                'error': f'拟合成功但预测轨迹生成失败：{type(exc).__name__}: {exc}',
+                'status': 'prediction_failed',
+            }, 500)
+
     return JSONResponse({
-        'status': 'model_not_applicable' if summary['hit_sentinel'] else 'ok',
+        'status': 'ok',
         'model': req.model_name,
         'state_columns': fitter._resolved_columns,
         'summary': summary,
         'predict_trace': predict_trace,
-        'warning': (
-            f'模型 {req.model_name} 在给定数据与参数边界下未能积分出可用解（优化停留在失败哨兵）；'
-            'R² 与参数估计无意义。可尝试放宽 bounds、改选状态列，或改用差分进化全局搜索。'
-        ) if summary['hit_sentinel'] else None,
+        'warning': None,
     })
 
 

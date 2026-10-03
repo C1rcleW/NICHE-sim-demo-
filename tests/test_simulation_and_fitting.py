@@ -425,6 +425,73 @@ def test_web_fit_returns_200_with_warning_for_sentinel_solution(monkeypatch: pyt
     assert payload["status"] == "model_not_applicable"
     assert payload["warning"] and "哨兵" in payload["warning"]
     assert payload["summary"]["hit_sentinel"] is True
+    # 哨兵解不生成预测轨迹：既省算力，也避免 predict 失败把结论颠倒
+    assert payload["predict_trace"] == []
+    assert payload["prediction_skipped"] is True
+
+
+def test_sentinel_check_precedes_prediction(monkeypatch: pytest.MonkeyPatch) -> None:
+    """哨兵命中时不得调用 predict：真实场景 resource_competition+robust=false
+    的 predict 必然失败，若先 predict 会把"模型不适用"错报成 500 prediction_failed。
+    """
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    class _SentinelWithFailingPredict:
+        n_states = 2
+        _y0 = np.array([0.5, 0.3])
+        _resolved_columns = {"R1": "state_a", "R2": "state_b"}
+        state_names = ["R1", "R2"]
+        predict_called = False
+
+        def __init__(self):
+            self._t = np.array([0.0, 1.0])
+
+        def fit_from_dataframe(self, df, agent_id=None):
+            return type("R", (), {"success": True, "fun": 1e12})()
+
+        def predict(self, t, y0):
+            type(self).predict_called = True
+            raise RuntimeError("predict would fail")
+
+        def summary_json(self):
+            return {"hit_sentinel": True, "r_squared": None, "converged": False, "params_at_bounds": []}
+
+    stub = _SentinelWithFailingPredict()
+    monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: stub)
+    monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
+
+    response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="square_law", robust=False)))
+    assert response.status_code == 200, response.body
+    assert stub.predict_called is False, "哨兵命中时不应调用 predict"
+
+
+def test_missing_time_or_agent_column_reports_invalid_dataframe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """数据缺必需列时必须报 invalid_dataframe，而不是被误诊成"未知模型名"。
+
+    回归：`except KeyError` 曾包住整个流程，df 缺 time 列时返回
+    400 unknown_model（"未知模型名 'time'"）。
+    """
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    for frame in (
+        pd.DataFrame({"agent_id": ["a"], "state_happiness": [0.1]}),          # 缺 time
+        pd.DataFrame({"time": [0], "state_happiness": [0.1]}),                # 缺 agent_id（按 agent 拟合时）
+    ):
+        monkeypatch.setattr(web_app_module, "_sim_df", frame)
+        request = web_app_module.FitRequest(model_name="wellbeing", robust=False)
+        if "agent_id" not in frame.columns:
+            request.agent_id = "a"
+        response = asyncio.run(web_app_module.api_fit(request))
+        assert response.status_code == 400, response.body
+        body = json.loads(response.body)
+        assert body["status"] == "invalid_dataframe", body
+        assert "必需列" in body["error"]
 
 
 def test_web_fit_maps_optimizer_failure_to_400(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -568,6 +635,82 @@ def test_fit_diagnostics_do_not_expose_alphabetical_mapping_suggestion() -> None
     assert "state_cultural_level" not in message.split("可用状态列")[0], "不应把常量列当作建议列"
     assert "/api/models" in message, "应指向带方差过滤的候选接口"
     assert "state_mapping" in message
+
+
+def test_build_fit_chart_does_not_shadow_i18n_function() -> None:
+    """buildFitChart 内不得再声明名为 t 的变量。
+
+    回归（既有 bug）：`const t = Object.keys(byTime)...` 遮蔽了 i18n 函数 t()，
+    导致每次成功拟合都在绘图阶段抛 `TypeError: t is not a function`，
+    状态永远停在"拟合中…"。复核指出该修复当时零测试覆盖，故这里用源码形状断言守住。
+    """
+    dashboard = Path(__file__).resolve().parent.parent / "family_abm" / "web" / "static" / "js" / "dashboard.js"
+    source = dashboard.read_text(encoding="utf-8")
+
+    start = source.index("function buildFitChart")
+    end = source.index("\nfunction ", start + 1)
+    body = source[start:end]
+
+    assert not re.search(r"\b(?:const|let|var)\s+t\s*=", body), "buildFitChart 内不得声明名为 t 的变量（会遮蔽 i18n）"
+    assert "const timeKeys" in body, "应使用不冲突的变量名承载时间轴"
+    assert "t('fitting.data_suffix')" in body, "i18n 调用必须仍然有效"
+
+
+def test_models_endpoint_respects_agent_subset() -> None:
+    """/api/models 支持按 agent 子集评估：整体有变化但该 agent 恒定的列应判为常量。"""
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+    frame = pd.DataFrame({
+        "time": [0, 1, 2, 0, 1, 2],
+        "agent_id": ["A", "A", "A", "B", "B", "B"],
+        # 整体随时间变化，但 agent A 恒定
+        "state_happiness": [0.5, 0.5, 0.5, 0.1, 0.5, 0.9],
+        "state_stress": [0.2, 0.4, 0.6, 0.2, 0.4, 0.6],
+    })
+    original = web_app_module._sim_df
+    web_app_module._sim_df = frame
+    try:
+        pooled = json.loads(asyncio.run(web_app_module.api_models()).body)
+        subset = json.loads(asyncio.run(web_app_module.api_models(agent_id="A")).body)
+    finally:
+        web_app_module._sim_df = original
+
+    assert "state_happiness" in pooled["usable_state_columns"], "整体看 happiness 有变化"
+    assert "state_happiness" in subset["constant_state_columns"], "agent A 的 happiness 恒定"
+    wellbeing_subset = next(m for m in subset["models"] if m["name"] == "wellbeing")
+    assert wellbeing_subset["directly_fittable"] is False, "该 agent 子集下 happiness 为常量，不应声称可直接拟合"
+
+
+def test_variance_report_treats_single_group_as_unverifiable() -> None:
+    """只有一个有效时间分组的列无法验证方差，应归入 unverifiable 而不是 usable。"""
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+    frame = pd.DataFrame({
+        "time": [0, 0, 1, 1],
+        "state_only_one_group": [0.1, 0.2, None, None],
+        "state_normal": [0.1, 0.2, 0.3, 0.4],
+    })
+    usable, constant, unverifiable = web_app_module._column_variance_report(frame)
+    assert "state_only_one_group" in unverifiable, f"unverifiable={unverifiable}"
+    assert "state_normal" in usable
+
+
+def test_frontend_blocks_fit_when_no_model_is_selectable() -> None:
+    """全禁用时必须禁用拟合按钮并给出原因，且拒绝发起拟合。"""
+    dashboard = Path(__file__).resolve().parent.parent / "family_abm" / "web" / "static" / "js" / "dashboard.js"
+    source = dashboard.read_text(encoding="utf-8")
+    assert "fitSectionBlocked" not in source  # 防止误命名
+    assert "fitSelectionBlocked" in source
+    assert "btn.disabled = !anySelectable" in source
+    assert "'fitting.none_available'" in source
+    assert source.count("fitting.none_available':") == 2, "该 i18n 键应中英双语齐全"
+
+    template = Path(__file__).resolve().parent.parent / "family_abm" / "web" / "templates" / "index.html"
+    html = template.read_text(encoding="utf-8")
+    assert 'id="fitRunBtn"' in html, "拟合按钮需要 id 才能被禁用"
 
 
 def test_converged_reflects_optimizer_state_not_bound_hits() -> None:

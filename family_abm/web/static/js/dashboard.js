@@ -32,6 +32,7 @@ const I18N = {
     'fitting.warn_sentinel': '优化停在失败哨兵：该解未成功积分，R² 无意义。',
     'fitting.warn_bounds': '参数被边界钉住：{0}（该方向可能不可辨识或边界不合适）。',
     'fitting.warn_r2_nonpositive': 'R² 非正：该模型结构不适合这些状态列，Converged 只表示优化器跑完了。',
+    'fitting.none_available': '当前数据下没有可直接拟合的模型（可用状态列过少或全为常量）。',
     'charts.niche': '生境空间',
     'fitting.warn': '请先运行仿真，然后选择模型进行拟合。',
     'fitting.title': 'ODE模型拟合（兰彻斯特型）',
@@ -102,6 +103,7 @@ const I18N = {
     'fitting.warn_sentinel': 'Optimizer stopped on the failure sentinel: the solution never integrated, R^2 is meaningless.',
     'fitting.warn_bounds': 'Parameters pinned at bounds: {0} (that direction may be unidentifiable or the bounds unsuitable).',
     'fitting.warn_r2_nonpositive': 'Non-positive R^2: this model structure does not suit these state columns; Converged only means the optimizer finished.',
+    'fitting.none_available': 'No directly fittable model for the current data (too few usable state columns, or all are constant).',
     'charts.niche': 'Niche Space',
     'fitting.warn': 'Run a simulation first, then select a model to fit.',
     'fitting.title': 'ODE Model Fitting (Lanchester-type)',
@@ -383,7 +385,11 @@ async function runSimulation() {
 let modelInfo = {};
 
 async function loadModelInfo() {
-  const res = await api('/api/models');
+  // 按当前选中的 agent 评估可拟合性：拟合到单个 agent 时用的是该 agent 自己的序列，
+  // "整体有变化但该 agent 恒定"的列必须按子集重新判定。
+  const agentSel = document.getElementById('fitAgent');
+  const agentId = agentSel ? (agentSel.value || '') : '';
+  const res = await api('/api/models' + (agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''));
   if (res.error || !res.models) return;
   modelInfo = {};
   res.models.forEach(m => { modelInfo[m.name] = m; });
@@ -402,6 +408,23 @@ async function loadModelInfo() {
   const preferred = ['wellbeing', 'influence', 'logistic', 'square_law', 'linear_law', 'lotka_volterra', 'resource_competition'];
   const pick = preferred.find(n => modelInfo[n] && !modelInfo[n].needs_manual_mapping);
   if (pick) sel.value = pick;
+
+  // 全部模型都不可用时：下拉会停在空值，此时必须禁用拟合按钮并说明原因，
+  // 否则用户点击会发出 model_name="" 并收到一条"未知模型名"的原始错误。
+  const anySelectable = res.models.some(m => !m.needs_manual_mapping);
+  const btn = document.getElementById('fitRunBtn');
+  if (btn) btn.disabled = !anySelectable;
+  sel.dataset.allDisabled = anySelectable ? '' : '1';
+  if (!anySelectable) setStatus('error', t('fitting.none_available'));
+  else setStatus('ready', '');
+}
+
+/** 下拉被置灰/全禁用时不允许发起拟合。 */
+function fitSelectionBlocked() {
+  const sel = document.getElementById('fitModel');
+  if (!sel || sel.dataset.allDisabled === '1') return true;
+  const option = sel.options[sel.selectedIndex];
+  return !option || option.disabled;
 }
 
 function currentStateMapping(modelName) {
@@ -422,6 +445,8 @@ function buildAgentList() {
   const sel = document.getElementById('fitAgent');
   sel.innerHTML = `<option value="">${t('fitting.aggregate')}</option>` +
     simData.agents.map(a => `<option value="${a.id}">${a.name} (${a.role})</option>`).join('');
+  // 拟合对象变化会改变"哪些状态列有变化"，需要重新评估模型可拟合性
+  sel.onchange = () => { loadModelInfo(); };
 }
 
 let selAgentId = null;
@@ -505,6 +530,10 @@ function buildFittingView() {
 
 async function runFitting() {
   setStatus('running', t('status.fitting'));
+  if (fitSelectionBlocked()) {
+    setStatus('error', t('fitting.none_available'));
+    return;
+  }
   const model = document.getElementById('fitModel').value;
   const agent = document.getElementById('fitAgent').value || null;
   const mapping = currentStateMapping(model);
