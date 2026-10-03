@@ -1,0 +1,19 @@
+# 统一按 LF 存储，避免 Windows(autocrlf=true) 与 CI(Linux) 之间产生行尾噪声
+* text=auto eol=lf
+
+# 明确声明为二进制，禁止任何文本转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Windows 脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 锁文件可由工具生成，diff 意义有限
+*.lock -diff
