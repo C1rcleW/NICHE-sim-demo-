@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import json
 import random
 from pathlib import Path
 
@@ -266,24 +267,135 @@ def test_web_fit_accepts_explicit_state_mapping(sim_df: pd.DataFrame) -> None:
     assert mapped.json()["state_columns"] == {"R1": "state_happiness", "R2": "state_stress"}
 
 
-def test_converged_is_false_when_parameters_are_pinned_at_bounds() -> None:
-    """突变测试：把参数钉在下界时 converged 必须为 False。
+def test_api_models_excludes_constant_columns_from_suggestions() -> None:
+    """候选映射必须排除零方差列。
 
-    历史问题：旧断言写"若有贴边参数则 converged 为 False"，但构造的场景里
-    params_at_bounds 为空，把 converged 硬编码为 True 也能通过（空转测试）。
-    这里显式把 fitted_params_ 设到边界上。
+    回归：按字母序取前 N 个 state_ 列会选中 Household 专属常量列
+    （state_cultural_level，ptp=0），把模型拟到常数列上会得到 R²=0.0 却
+    converged=True —— 比"静默猜列"更糟的误导。
+    """
+    fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    from family_abm.web.app import app as web_app
+
+    client = fastapi_testclient.TestClient(web_app)
+    assert client.post("/api/run", json={"steps": 20}).status_code == 200
+    payload = client.get("/api/models").json()
+
+    assert "state_cultural_level" in payload["constant_state_columns"], "应识别出 Household 常量列"
+    assert "state_happiness" in payload["usable_state_columns"]
+    for column in payload["usable_state_columns"]:
+        assert column not in payload["constant_state_columns"]
+
+    for model in payload["models"]:
+        suggestion = model["suggested_mapping"]
+        if suggestion:
+            for column in suggestion.values():
+                assert column not in payload["constant_state_columns"], (
+                    f"{model['name']} 的建议映射包含零方差列 {column}"
+                )
+
+
+def test_api_fit_returns_400_when_all_starts_fail() -> None:
+    """多起点全部失败必须返回 400（可预期）而不是 500（服务端故障）。"""
+    fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    from family_abm.web.app import app as web_app
+
+    client = fastapi_testclient.TestClient(web_app)
+    # 恰好 10 个时间点：满足拟合下限，但对 6 参数模型几乎没有约束力
+    assert client.post("/api/run", json={"steps": 10}).status_code == 200
+
+    response = client.post("/api/fit", json={
+        "model_name": "resource_competition",
+        "robust": True,
+        "state_mapping": {"R1": "state_income", "R2": "state_education"},
+    })
+    assert response.status_code == 400, f"应为 400，实际 {response.status_code}: {response.text[:300]}"
+    body = response.json()
+    assert body.get("status") in {"all_starts_failed", "model_not_applicable"}
+    assert "error" in body
+
+
+def test_web_fit_maps_sentinel_solution_to_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    """优化停在哨兵上必须映射为 400（带 status=model_not_applicable），而非 500。
+
+    这里用确定性桩替换 fitter：靠真实模型"必然失败"来做断言是不可靠的
+    （实测 square_law 在某些列组合上也能找到 R²=0.74 的可用解）。
+    """
+    import asyncio
+    import importlib
+
+    # 注意：`from family_abm.web import app` / `import family_abm.web.app as m`
+    # 都会拿到 FastAPI 实例（web/__init__.py 暴露了同名属性），必须显式取子模块。
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    class _SentinelFitter:
+        n_states = 2
+        _t = None
+        _y0 = None
+        fitted_param_dict = {"alpha": 0.5}
+        state_names = ["R1", "R2"]
+
+        def fit_from_dataframe(self, df, agent_id=None):
+            return type("R", (), {"success": True, "fun": 1e12})()
+
+        def summary_json(self):
+            return {"hit_sentinel": True, "r_squared": None, "converged": False}
+
+    monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: _SentinelFitter())
+    monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
+
+    response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="square_law", robust=False)))
+    assert response.status_code == 400
+    payload = json.loads(response.body)
+    assert payload["status"] == "model_not_applicable"
+    assert "哨兵" in payload["error"]
+
+
+def test_web_fit_maps_all_starts_failure_to_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    """多起点全部失败抛出的 RuntimeError 必须映射为 400。"""
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    class _FailingFitter:
+        n_states = 2
+        _t = None
+        _y0 = None
+        state_names = ["R1", "R2"]
+
+        def fit_robust(self, df, agent_id=None):
+            raise RuntimeError("All fitting attempts failed.")
+
+        def summary_json(self):
+            return {"hit_sentinel": True}
+
+    monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: _FailingFitter())
+    monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
+
+    response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="resource_competition", robust=True)))
+    assert response.status_code == 400
+    assert json.loads(response.body)["status"] == "all_starts_failed"
+
+
+def test_converged_reflects_optimizer_state_not_bound_hits() -> None:
+    """突变测试：converged 只看优化器状态，不看参数是否贴边。
+
+    历史问题（两次）：先是把 `r_squared > 0` 塞进 converged 导致负 R² 不可见；
+    后又把"无贴边参数"塞进去，导致 R²=0.97–0.99 的正常拟合被判为未收敛。
+    本测试同时钉住两个方向。
     """
     fitter = make_fitter("wellbeing")
     fitter.bounds = [(1e-4, 5.0)] * fitter.n_params
     fitter.fit_result = type("R", (), {"success": False, "fun": 0.01, "x": np.array([1e-4] * 5)})()
-
     assert fitter.converged is False, "优化器未成功时不得判为收敛"
 
-    # 优化器成功 + 目标有限 + R² 有限 -> 收敛为真；贴边只作为告警
+    # 优化器成功 + 目标有限 + R² 有限 -> 收敛为真；参数贴边仅作告警
     fitter.fit_result = type("R", (), {"success": True, "fun": 0.01, "x": np.array([1e-4] * 5)})()
     fitter.fitted_params_ = fitter.fit_result.x
     fitter.r_squared = 0.97
     assert fitter.converged is True, "高 R² 的成功拟合不应因参数贴边被判为未收敛"
+    assert fitter._parameters_at_bounds(fitter.fit_result.x) == fitter.param_names, "贴边仍应被检出并告警"
 
 
 def test_high_r_squared_fit_is_not_reported_as_unconverged() -> None:

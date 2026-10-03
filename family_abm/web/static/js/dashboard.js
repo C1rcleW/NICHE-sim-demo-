@@ -27,6 +27,10 @@ const I18N = {
     'charts.timeseries': '时间序列',
     'charts.no_data': '当前选择下没有可绘制的数据（该 agent 没有对应状态量）。',
     'fitting.need_mapping': '该模型的状态名与 ABM 列名没有默认对应关系，无法直接拟合。',
+    'fitting.mapping_suffix': ' （需映射）',
+    'fitting.manual_suffix': ' （需人工指定映射）',
+    'fitting.warn_sentinel': '优化停在失败哨兵：该解未成功积分，R² 无意义。',
+    'fitting.warn_bounds': '参数被边界钉住：{0}（该方向可能不可辨识或边界不合适）。',
     'charts.niche': '生境空间',
     'fitting.warn': '请先运行仿真，然后选择模型进行拟合。',
     'fitting.title': 'ODE模型拟合（兰彻斯特型）',
@@ -92,6 +96,10 @@ const I18N = {
     'charts.timeseries': 'Time Series',
     'charts.no_data': 'No plottable data for the current selection (this agent has no such state).',
     'fitting.need_mapping': 'This model has no default column mapping and cannot be fitted directly.',
+    'fitting.mapping_suffix': ' (needs mapping)',
+    'fitting.manual_suffix': ' (manual mapping required)',
+    'fitting.warn_sentinel': 'Optimizer stopped on the failure sentinel: the solution never integrated, R^2 is meaningless.',
+    'fitting.warn_bounds': 'Parameters pinned at bounds: {0} (that direction may be unidentifiable or the bounds unsuitable).',
     'charts.niche': 'Niche Space',
     'fitting.warn': 'Run a simulation first, then select a model to fit.',
     'fitting.title': 'ODE Model Fitting (Lanchester-type)',
@@ -380,8 +388,10 @@ async function loadModelInfo() {
 
   const sel = document.getElementById('fitModel');
   const options = res.models.map(m => {
-    const label = m.directly_fittable ? m.name : `${m.name} （需映射）`;
-    return `<option value="${m.name}">${label}</option>`;
+    const suffix = m.directly_fittable
+      ? ''
+      : (m.needs_manual_mapping ? t('fitting.manual_suffix') : t('fitting.mapping_suffix'));
+    return `<option value="${m.name}">${m.name}${suffix}</option>`;
   });
   sel.innerHTML = options.join('');
   if (modelInfo['wellbeing'] && modelInfo['wellbeing'].directly_fittable) sel.value = 'wellbeing';
@@ -391,6 +401,7 @@ function currentStateMapping(modelName) {
   const info = modelInfo[modelName];
   if (!info) return null;
   if (info.directly_fittable) return null; // 走默认约定即可
+  if (info.needs_manual_mapping) return undefined; // 信号：必须人工指定
   return info.suggested_mapping || null;
 }
 
@@ -490,7 +501,8 @@ async function runFitting() {
   const model = document.getElementById('fitModel').value;
   const agent = document.getElementById('fitAgent').value || null;
   const mapping = currentStateMapping(model);
-  if (!mapping && modelInfo[model] && !modelInfo[model].directly_fittable) {
+  if (mapping === undefined) {
+    // 候选状态列不足以覆盖该模型的状态数：必须由用户显式指定映射，不能瞎猜
     setStatus('error', t('fitting.need_mapping'));
     return;
   }
@@ -505,10 +517,18 @@ async function runFitting() {
   document.getElementById('fitChartCard').style.display = 'block';
 
   const s = res.summary;
+  // 告警必须可见：贴边参数表示该方向可能不可辨识；哨兵命中表示解本身无效。
+  const warnings = [];
+  if (s.hit_sentinel) warnings.push(t('fitting.warn_sentinel'));
+  if (s.params_at_bounds && s.params_at_bounds.length) {
+    warnings.push(t('fitting.warn_bounds', s.params_at_bounds.join(', ')));
+  }
   document.getElementById('fitKPIs').innerHTML = `
     <div class="result-kpi"><div class="value">${s.r_squared !== null ? s.r_squared.toFixed(4) : '\u2014'}</div><div class="label">R^2</div></div>
     <div class="result-kpi"><div class="value">${s.converged ? t('fitting.converged_yes') : t('fitting.converged_no')}</div><div class="label">Converged</div></div>
-  `;
+  ` + (warnings.length
+    ? `<div class="fit-warning">${warnings.map(w => `<div>\u26a0 ${w}</div>`).join('')}</div>`
+    : '');
   document.getElementById('fitParams').innerHTML = Object.entries(s.params).map(([k, v]) =>
     `<span class="fit-param"><span class="key">${k}</span> <span class="val">${typeof v === 'number' ? v.toFixed(4) : v}</span></span>`
   ).join('');

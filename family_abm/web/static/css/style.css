@@ -62,6 +62,13 @@ nav.tabs button:hover { background:#f1f3f6; }
 .fit-param .key { color:var(--muted); }
 .fit-param .val { font-weight:700; }
 
+/* 拟合诊断告警：参数贴边 / 优化停在失败哨兵 */
+.fit-warning {
+  grid-column: 1 / -1; margin-top:10px; padding:10px 14px;
+  background:#fffbeb; border:1px solid #f6e05e; border-radius:8px;
+  color:#744210; font-size:.8rem; line-height:1.6;
+}
+
 .loading { text-align:center; padding:40px; color:var(--muted); }
 .error { background:#fff5f5; border:1px solid #feb2b2; color:#c53030; padding:12px 16px; border-radius:8px; }
 
