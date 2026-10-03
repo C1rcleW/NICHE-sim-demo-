@@ -8,9 +8,10 @@ version = "0.2.0"
 description = "Family social micro-niche agent-based modeling framework with Lanchester-type ODE fitting and a FastAPI dashboard"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
 authors = [{ name = "C1rcleW" }]
 keywords = ["agent-based-model", "computational-social-science", "social-niche", "ode", "simulation"]
+# 注意：本仓库当前没有 LICENSE 文件，因此不在此声明 license 字段
+# （避免元数据声称 MIT 而仓库实际无授权文件）。
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -28,12 +29,12 @@ classifiers = [
 # 注意 scipy / matplotlib / pydantic 是 import family_abm 时的硬依赖：
 #   family_abm/__init__.py -> .fitting (scipy) 与 .viz (matplotlib)
 #   family_abm/web/app.py  -> pydantic
+# networkx 只在 plot_family_network() 内部惰性导入，因此放入 [viz] extra。
 dependencies = [
     "numpy>=1.21.0",
     "pandas>=1.3.0",
     "scipy>=1.7.0",
     "matplotlib>=3.4.0",
-    "networkx>=2.6",
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
     "jinja2>=3.1.0",
@@ -41,7 +42,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "build>=0.10"]
+# httpx 是 fastapi.testclient 的必需依赖，tools/verify_install.py 的 HTTP 端到端
+# 依赖它，因此必须出现在 dev extra 中，否则按声明安装也会让冒烟退化为跳过。
+dev = ["pytest>=7.0", "build>=0.10", "httpx>=0.24"]
+viz = ["networkx>=2.6"]
 
 [project.urls]
 Repository = "https://github.com/C1rcleW/NICHE-sim-demo-"

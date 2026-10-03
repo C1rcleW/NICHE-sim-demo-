@@ -110,8 +110,11 @@ def main(argv: list[str] | None = None) -> int:
         check("Family ABM" in response.text, "GET / 渲染出 index.html 内容")
         css = client.get("/static/css/style.css")
         check(css.status_code == 200, "GET /static/css/style.css 返回 200", f"实际 {css.status_code}")
-    except ImportError:
-        print("[SKIP] 未安装 fastapi/httpx，跳过 HTTP 冒烟")
+    except ImportError as exc:
+        # 必须视为失败：HTTP 端到端是本脚本的核心检查项。
+        # 历史实现把它算作 SKIP 并仍然退出 0，会让"9 passed"变成假绿
+        # （httpx 未安装时端到端从未真正执行）。httpx 已列入 [dev] extra。
+        check(False, "HTTP 冒烟所需依赖缺失", f"{type(exc).__name__}: {exc}（请安装 .[dev]）")
     except Exception as exc:
         check(False, "HTTP 冒烟", f"{type(exc).__name__}: {exc}")
 

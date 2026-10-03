@@ -10,6 +10,11 @@
     python tools/baseline.py --out baseline/default_seed42.json
     python tools/baseline.py --check baseline/default_seed42.json
 
+`baseline/default_seed42.json` 是**纳入版本控制的锚点**，用于在任何校准/结构改动
+之后显式暴露不可见的行为变化。若改动是有意的，重新固化并在提交信息里说明：
+
+    python -X utf8 tools/baseline.py --out baseline/default_seed42.json
+
 退出码：0 = 成功/一致，1 = 与基线不一致或发生错误。
 """
 from __future__ import annotations

@@ -1,3 +1,10 @@
+"""Family social micro-niche agent-based modeling framework."""
+
+# 单一真源说明：版本号在 pyproject.toml 的 [project].version 中声明。
+# 此处重复是为了支持 `family_abm.__version__`（打包验收与用户诊断常用）。
+# 两者由 tests/test_packaging.py::test_package_version_matches_pyproject 强制一致。
+__version__ = "0.2.0"
+
 from .core.agent import Agent
 from .core.environment import Environment
 from .core.scheduler import Scheduler

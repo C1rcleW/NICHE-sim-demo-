@@ -1,0 +1,112 @@
+{
+  "seed": 42,
+  "steps": 120,
+  "summary": {
+    "agents": {
+      "FamilyMember": {
+        "columns": {
+          "attr_age": {
+            "max": 50.0,
+            "mean": 31.2,
+            "min": 8.0,
+            "n": 605,
+            "std": 14.444107
+          },
+          "state_education": {
+            "max": 0.704355,
+            "mean": 0.481354,
+            "min": 0.052957,
+            "n": 605,
+            "std": 0.148049
+          },
+          "state_energy": {
+            "max": 0.995809,
+            "mean": 0.75132,
+            "min": 0.6026,
+            "n": 605,
+            "std": 0.032259
+          },
+          "state_happiness": {
+            "max": 0.667654,
+            "mean": 0.362729,
+            "min": 0.185474,
+            "n": 605,
+            "std": 0.093161
+          },
+          "state_health": {
+            "max": 1.0,
+            "mean": 0.539863,
+            "min": 0.01,
+            "n": 605,
+            "std": 0.27588
+          },
+          "state_income": {
+            "max": 0.130991,
+            "mean": 0.071043,
+            "min": 0.0,
+            "n": 605,
+            "std": 0.058288
+          },
+          "state_stress": {
+            "max": 1.0,
+            "mean": 0.787957,
+            "min": 0.171735,
+            "n": 605,
+            "std": 0.190641
+          }
+        },
+        "rows": 605
+      },
+      "Household": {
+        "columns": {
+          "state_cultural_level": {
+            "max": 0.5,
+            "mean": 0.5,
+            "min": 0.5,
+            "n": 242,
+            "std": 0.0
+          },
+          "state_housing_quality": {
+            "max": 0.5,
+            "mean": 0.5,
+            "min": 0.5,
+            "n": 242,
+            "std": 0.0
+          },
+          "state_neighborhood_quality": {
+            "max": 0.5,
+            "mean": 0.5,
+            "min": 0.5,
+            "n": 242,
+            "std": 0.0
+          },
+          "state_savings": {
+            "max": 0.0,
+            "mean": 0.0,
+            "min": 0.0,
+            "n": 242,
+            "std": 0.0
+          },
+          "state_social_capital": {
+            "max": 0.5,
+            "mean": 0.5,
+            "min": 0.5,
+            "n": 242,
+            "std": 0.0
+          },
+          "state_total_income": {
+            "max": 0.263782,
+            "mean": 0.176032,
+            "min": 0.0,
+            "n": 242,
+            "std": 0.069249
+          }
+        },
+        "rows": 242
+      }
+    },
+    "rows": 847,
+    "time_max": 120,
+    "time_min": 0
+  }
+}
