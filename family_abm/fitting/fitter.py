@@ -39,7 +39,8 @@ class ABMFitter:
         self.fitted_param_dict: dict[str, float] = {}
         self.fit_result: Optional[Any] = None
         self.r_squared: Optional[float] = None
-        self._r_squared_raw: Optional[float] = None
+        self.bounds: list[tuple[float, float]] = []
+        self._bound_params: list[str] = []
         self._t: Optional[np.ndarray] = None
         self._y_true: Optional[np.ndarray] = None
         self._y0: Optional[np.ndarray] = None
@@ -214,6 +215,7 @@ class ABMFitter:
             p0 = [0.5] * n
         if bounds is None:
             bounds = [(1e-4, 5.0)] * n
+        self.bounds = list(bounds)
 
         result = minimize(self._objective, p0, args=(t, y_true, y_true[0]),
                           method=method, bounds=bounds,
@@ -245,6 +247,7 @@ class ABMFitter:
         n = self.n_params
         if bounds is None:
             bounds = [(1e-4, 5.0)] * n
+        self.bounds = list(bounds)
 
         rng = np.random.RandomState(seed)
         best_result = None
@@ -283,6 +286,7 @@ class ABMFitter:
         n = self.n_params
         if bounds is None:
             bounds = [(1e-4, 5.0)] * n
+        self.bounds = list(bounds)
 
         result = differential_evolution(
             self._objective, bounds, args=(t, y_true, y_true[0]),
@@ -298,13 +302,30 @@ class ABMFitter:
         self.fitted_param_dict = dict(zip(self.param_names, result.x))
         self.fit_result = result
 
-        # 真实（未截断）R²：保留供 P1-1 的诊断使用；当前对外仍维持原有的
-        # max(0.0, .) 行为，避免在阶段 B 改变已发布语义。
-        self._r_squared_raw = self._r_squared(result.x, t, y_true, y_true[0])
-        if self._r_squared_raw is None:
-            self.r_squared = None
-        else:
-            self.r_squared = max(0.0, self._r_squared_raw)
+        # 上报**未截断**的真实 R²（允许为负）。
+        # 历史实现是 max(0.0, 1 - ss_res/ss_tot)，把"拟合失败"与"拟合极差"抹平成
+        # 同一个 0.0，而 converged 又要求 r_squared > 0 —— 两者叠加使负 R² 永远
+        # 无法被发现（实测原始 -3.5175 被上报为 0.0）。
+        self.r_squared = self._r_squared(result.x, t, y_true, y_true[0])
+        self._bound_params = self._parameters_at_bounds(result.x)
+
+    def _parameters_at_bounds(self, params: np.ndarray, tol: float = 1e-8) -> list[str]:
+        """返回贴在上/下界的参数名（优化被边界截断的直接证据）。"""
+        hit: list[str] = []
+        for name, value, (lower, upper) in zip(self.param_names, params, self.bounds or []):
+            if abs(float(value) - float(lower)) <= tol or abs(float(value) - float(upper)) <= tol:
+                hit.append(str(name))
+        return hit
+
+    def _objective_hit_sentinel(self) -> bool:
+        """目标函数是否停在失败哨兵上（说明该解根本没积分成功）。"""
+        if self.fit_result is None:
+            return True
+        try:
+            fun = float(self.fit_result.fun)
+        except (TypeError, ValueError):
+            return True
+        return not np.isfinite(fun) or fun >= _SENTINEL
 
     # ── Prediction ───────────────────────────────────────────────────────
 
@@ -318,10 +339,16 @@ class ABMFitter:
 
     @property
     def converged(self) -> bool:
+        """是否可认为得到"可信拟合"。
+
+        三个条件缺一不可：优化器报告成功、目标函数没有停在失败哨兵上、
+        且没有参数被边界钉住。R² 为负本身不再被判为"未收敛"——它是"确实拟合得很差"
+        的证据，应当被如实上报而不是被隐藏。
+        """
         return (self.fit_result is not None and
-                self.fit_result.success and
-                self.r_squared is not None and
-                self.r_squared > 0.0)
+                bool(self.fit_result.success) and
+                not self._objective_hit_sentinel() and
+                not self._bound_params)
 
     def summary_json(self) -> dict[str, Any]:
         r2 = None
@@ -350,7 +377,11 @@ class ABMFitter:
             'n_params': self.n_params,
             'n_states': self.n_states,
             'state_names': self.state_names,
+            'state_columns': dict(self._resolved_columns),
             'fun': fun_val,
+            'hit_sentinel': self._objective_hit_sentinel(),
+            'params_at_bounds': list(self._bound_params),
+            'bounds': [[float(lo), float(hi)] for lo, hi in self.bounds],
         }
 
     def summary(self) -> str:
@@ -360,6 +391,10 @@ class ABMFitter:
                  f'Params: {j["params"]}',
                  f'R^2:    {j["r_squared"]}',
                  f'Converged: {j["converged"]}']
+        if j['params_at_bounds']:
+            lines.append(f'参数被边界钉住: {j["params_at_bounds"]}（该方向不可辨识或边界不合适）')
+        if j['hit_sentinel']:
+            lines.append('目标函数停在失败哨兵上：该解未成功积分，R² 无意义')
         return '\n'.join(lines)
 
     def __repr__(self) -> str:

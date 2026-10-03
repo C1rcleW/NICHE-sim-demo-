@@ -130,13 +130,20 @@ async def api_data():
     df = _sim_df.copy()
     for c in df.columns:
         if pd.api.types.is_float_dtype(df[c]):
-            df[c] = df[c].round(4).fillna(0)
-    df = df.fillna(0)
+            df[c] = df[c].round(4)
+
+    # 缺失值一律传 null，不再 fillna(0)：
+    # Household 行没有 state_happiness 等成员状态列，填 0 会让前端聚合值
+    # 比真实值低约 28.6%，并与 fitter 自己用的 NaN 跳过均值不是同一序列。
+    # pandas 的 NaN 在 json.dumps 中会变成非法的 NaN 字面量，因此显式转成 None。
+    records = df.astype(object).where(pd.notna(df), None).to_dict(orient='records')
+    statistics = _sim_recorder.to_statistics_dataframe() if _sim_recorder is not None else pd.DataFrame()
 
     return JSONResponse({
         'agents': agents,
         'columns': list(df.columns),
-        'data': df.to_dict(orient='records'),
+        'data': records,
+        'statistics': statistics.to_dict(orient='records'),
         'steps': int(df['time'].max()) if 'time' in df.columns else 0,
     })
 
