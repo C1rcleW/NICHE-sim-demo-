@@ -1,9 +1,8 @@
-from setuptools import setup, find_packages
+"""兼容层：所有包元数据与依赖均声明在 pyproject.toml（单一真源）。
 
-setup(
-    name="family_abm",
-    version="0.1.0",
-    packages=find_packages(),
-    install_requires=["numpy>=1.21.0", "pandas>=1.3.0"],
-    python_requires=">=3.9",
-)
+保留本文件是为了兼容仍执行 `python setup.py ...` 的旧工具链；
+请勿在此重新声明 install_requires / packages，否则会与 pyproject.toml 产生分歧。
+"""
+from setuptools import setup
+
+setup()
