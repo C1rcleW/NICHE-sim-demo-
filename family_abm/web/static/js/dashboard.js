@@ -374,8 +374,14 @@ async function runSimulation() {
   `;
 
   buildAgentList();
-  await loadModelInfo();
-  setStatus('ok', t('status.simDone'));
+  // 至少一个模型可拟合才算真正可用；全禁用时状态栏必须说明原因，
+  // 不能被下面那句"仿真完成"覆盖（复核指出这正是原因说明不可见的原因）。
+  const hasFittable = await loadModelInfo();
+  if (hasFittable) {
+    setStatus('ok', t('status.simDone'));
+  } else {
+    setStatus('error', t('fitting.none_available'));
+  }
   document.querySelector('#tabNav button[data-tab="charts"]').click();
 }
 
@@ -383,14 +389,28 @@ async function runSimulation() {
 // 对应关系，必须显式给出 state_mapping。此前前端只发 model_name/agent_id/robust，
 // 导致 7 个模型里有 6 个在界面上永远返回 400。
 let modelInfo = {};
+let _modelInfoSeq = 0;      // 请求序号：丢弃乱序返回的陈旧响应
+let _modelInfoDebounce = null;
 
 async function loadModelInfo() {
   // 按当前选中的 agent 评估可拟合性：拟合到单个 agent 时用的是该 agent 自己的序列，
   // "整体有变化但该 agent 恒定"的列必须按子集重新判定。
+  const seq = ++_modelInfoSeq;
   const agentSel = document.getElementById('fitAgent');
   const agentId = agentSel ? (agentSel.value || '') : '';
-  const res = await api('/api/models' + (agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''));
-  if (res.error || !res.models) return;
+  let res;
+  try {
+    res = await api('/api/models' + (agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''));
+  } catch (err) {
+    if (seq === _modelInfoSeq) setStatus('error', String(err));
+    return false;
+  }
+  // 期间又发起了更新的请求：本次结果已陈旧，直接丢弃
+  if (seq !== _modelInfoSeq) return false;
+  if (res.error || !res.models) {
+    setStatus('error', res.error || '无法获取模型列表');
+    return false;
+  }
   modelInfo = {};
   res.models.forEach(m => { modelInfo[m.name] = m; });
 
@@ -415,8 +435,14 @@ async function loadModelInfo() {
   const btn = document.getElementById('fitRunBtn');
   if (btn) btn.disabled = !anySelectable;
   sel.dataset.allDisabled = anySelectable ? '' : '1';
-  if (!anySelectable) setStatus('error', t('fitting.none_available'));
-  else setStatus('ready', '');
+  // 状态栏由调用方决定（runSimulation 成功后会写"仿真完成"，此处若也写状态会被覆盖）
+  return anySelectable;
+}
+
+/** agent 下拉的防抖包装：避免快速切换产生并发请求与乱序覆盖。 */
+function scheduleLoadModelInfo() {
+  if (_modelInfoDebounce) clearTimeout(_modelInfoDebounce);
+  _modelInfoDebounce = setTimeout(() => { loadModelInfo(); }, 200);
 }
 
 /** 下拉被置灰/全禁用时不允许发起拟合。 */
@@ -446,7 +472,7 @@ function buildAgentList() {
   sel.innerHTML = `<option value="">${t('fitting.aggregate')}</option>` +
     simData.agents.map(a => `<option value="${a.id}">${a.name} (${a.role})</option>`).join('');
   // 拟合对象变化会改变"哪些状态列有变化"，需要重新评估模型可拟合性
-  sel.onchange = () => { loadModelInfo(); };
+  sel.onchange = () => { scheduleLoadModelInfo(); };
 }
 
 let selAgentId = null;
@@ -526,6 +552,12 @@ async function buildNicheChart() {
 function buildFittingView() {
   document.getElementById('fitWarning').style.display = 'none';
   document.getElementById('fitControlCard').style.display = 'block';
+  // 若当前数据下没有可拟合的模型，切换到此页时也要说明原因
+  // （否则用户只看到按钮灰掉却不知道为何）
+  const sel = document.getElementById('fitModel');
+  if (sel && sel.dataset.allDisabled === '1') {
+    setStatus('error', t('fitting.none_available'));
+  }
 }
 
 async function runFitting() {

@@ -14,7 +14,6 @@ from ..core.scheduler import Scheduler
 from ..core.simulation import Simulation
 from ..family.family_member import FamilyMember
 from ..family.household import Household
-from ..family.roles import ROLE_REGISTRY
 from ..niche.micro_niche import MicroNiche
 from ..ml.recorder import StateRecorder
 from ..fitting.fitter import make_fitter
@@ -287,19 +286,28 @@ async def api_fit(req: FitRequest):
         }, 400)
 
     # 拟合阶段单独包异常：这样"多起点全失败"(RuntimeError) 与 predict() 失败能被区分。
+    # 末尾必须保留兜底分支：拟合过程中真正未预期的异常（例如 state_mapping 指向字符串列
+    # 触发 pandas 的 TypeError）若逃出函数，FastAPI 会返回 text/plain 的
+    # "Internal Server Error"，前端 api() 只能拿到 JSON 解析错误，排障信息全部丢失。
     try:
         if req.robust:
             result = fitter.fit_robust(_sim_df, agent_id=req.agent_id)
         else:
             result = fitter.fit_from_dataframe(_sim_df, agent_id=req.agent_id)
     except ValueError as exc:
-        # 状态列无法解析 / 数据不足等可预期的输入问题
+        # 状态列无法解析 / 参数边界不合法 / 数据不足等可预期的输入问题
         return JSONResponse({'error': str(exc), 'status': 'invalid_input'}, 400)
     except RuntimeError as exc:
         return JSONResponse({
             'error': f'{exc}（多起点拟合全部失败；请检查状态列选择与参数边界，或减少起点数重试）',
             'status': 'all_starts_failed',
         }, 400)
+    except Exception as exc:
+        # 未预期异常：保持结构化 JSON（500 + status），不要退化成纯文本
+        return JSONResponse({
+            'error': f'{type(exc).__name__}: {exc}',
+            'status': 'fitting_error',
+        }, 500)
 
     _last_fitter = fitter
 

@@ -1,23 +1,19 @@
 """
 Launch:  python -m family_abm.web
 """
-import sys
-import webbrowser
 import threading
 import time
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
+import webbrowser
 
 
 def main():
     port = 8520
     url = f'http://127.0.0.1:{port}'
 
-    print(f'\n  Family ABM Dashboard')
+    print('\n  Family ABM Dashboard')
     print(f'  {"─" * 42}')
     print(f'  Launching at {url}')
-    print(f'  Press Ctrl+C to stop\n')
+    print('  Press Ctrl+C to stop\n')
 
     threading.Thread(target=lambda: (
         time.sleep(1.5),

@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import random
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -18,8 +20,7 @@ import pandas as pd
 import pytest
 
 from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder
-from family_abm.fitting.fitter import ABMFitter, compare_models, make_fitter
-from family_abm.fitting.lanchester import MODEL_PARAM_NAMES, MODEL_REGISTRY, MODEL_STATE_NAMES
+from family_abm.fitting.fitter import compare_models, make_fitter
 
 STEPS = 15
 
@@ -711,6 +712,84 @@ def test_frontend_blocks_fit_when_no_model_is_selectable() -> None:
     template = Path(__file__).resolve().parent.parent / "family_abm" / "web" / "templates" / "index.html"
     html = template.read_text(encoding="utf-8")
     assert 'id="fitRunBtn"' in html, "拟合按钮需要 id 才能被禁用"
+
+
+def test_unexpected_fitting_error_keeps_structured_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    """拟合中的未预期异常必须返回结构化 JSON 500，不能退化成 text/plain。
+
+    回归：为修哨兵顺序，上一版把 api_fit 最外层的 `except Exception -> 500 JSON`
+    整段删除，导致 state_mapping 指向字符串列（真实路径：pandas
+    `TypeError: Cannot perform reduction 'mean' with string dtype`）等异常逃出端点，
+    FastAPI 返回 `text/plain: Internal Server Error`，前端只能拿到 JSON 解析错误。
+    """
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    class _ExplodingFitter:
+        n_states = 2
+        _t = None
+        _y0 = None
+        state_names = ["R1", "R2"]
+
+        def fit_from_dataframe(self, df, agent_id=None):
+            raise TypeError("Cannot perform reduction 'mean' with string dtype")
+
+        def summary_json(self):
+            return {}
+
+    monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: _ExplodingFitter())
+    monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
+
+    response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="wellbeing", robust=False)))
+    assert response.status_code == 500
+    assert response.media_type == "application/json", f"错误响应必须是 JSON，实际 {response.media_type}"
+    body = json.loads(response.body)
+    assert body["status"] == "fitting_error"
+    assert "TypeError" in body["error"] and "string dtype" in body["error"]
+
+
+def test_real_string_column_mapping_yields_structured_500() -> None:
+    """真实路径复现：state_mapping 指向字符串列时也必须返回结构化 JSON 500。"""
+    fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    from family_abm.web.app import app as web_app
+
+    client = fastapi_testclient.TestClient(web_app)
+    assert client.post("/api/run", json={"steps": 20}).status_code == 200
+
+    response = client.post("/api/fit", json={
+        "model_name": "wellbeing",
+        # agent_id 是字符串列：拟合时对它求均值会触发 pandas TypeError
+        "state_mapping": {"happiness": "agent_id", "stress": "state_stress"},
+        "robust": False,
+    })
+    assert response.status_code in (400, 500), response.text
+    assert response.headers["content-type"].startswith("application/json"), response.headers
+    body = response.json()
+    assert body.get("status") in {"fitting_error", "invalid_input"}, body
+    assert body.get("error")
+
+
+def test_dashboard_behavior_harness_passes() -> None:
+    """真正执行 dashboard.js 的前端行为测试（Node + 最小 DOM 桩）。
+
+    此前的"全禁用禁止拟合"只有源码 grep 断言：把 fitSelectionBlocked() 的函数体
+    换成 `return false;`（保留所有被断言的字符串）后 pytest 依旧全绿，即测试没有
+    判别力。本测试调用 tools/check_dashboard_behavior.js，它会在 Node 里真正加载
+    dashboard.js 并验证：
+      - 全禁用时按钮禁用、fitSelectionBlocked() 为 true、不发 /api/fit 请求
+      - 仅一个模型可用时按钮可用且默认选中它
+      - agent 快速切换导致的乱序响应不会覆盖新响应
+    该脚本可用 DASHBOARD_JS 环境变量指向突变体，用于确认自身有判别力。
+    """
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("环境没有 node，无法运行 dashboard 行为测试")
+    harness = Path(__file__).resolve().parent.parent / "tools" / "check_dashboard_behavior.js"
+    result = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, f"dashboard 行为测试失败：\n{result.stdout}\n{result.stderr}"
+    assert "结果：全部通过" in result.stdout, result.stdout
 
 
 def test_converged_reflects_optimizer_state_not_bound_hits() -> None:
