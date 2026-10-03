@@ -148,17 +148,11 @@ async def api_fit(req: FitRequest):
         return JSONResponse({'error': 'No simulation data. POST /api/run first.'}, 400)
 
     try:
-        # Build state mapping: models like 'wellbeing' have state names matching
-        # ABM columns ('happiness' -> 'state_happiness') so default works.
-        # For abstract models ('influence' with O1/O2), auto-map to first N state cols.
-        state_names = MODEL_STATE_NAMES.get(req.model_name, [])
-        state_cols = [c for c in _sim_df.columns if c.startswith('state_')]
-        mapping = {}
-        for i, sn in enumerate(state_names):
-            if f'state_{sn}' not in _sim_df.columns and i < len(state_cols):
-                mapping[sn] = state_cols[i]
-
-        fitter = make_fitter(req.model_name, state_mapping=mapping if mapping else None)
+        # 不再自动猜列：只使用「模型状态名 -> state_<状态名>」这一条显式约定。
+        # 抽象模型（square_law 的 R1/R2、influence 的 O1/O2 等）与 ABM 状态列之间
+        # 没有默认语义对应关系，历史上静默映射会把模型拟到无关列（甚至方差为 0 的列）
+        # 上并返回看似合理的 R²=0.878。无法解析时明确报错，由调用方给 state_mapping。
+        fitter = make_fitter(req.model_name)
         if req.robust:
             fitter.fit_robust(_sim_df, agent_id=req.agent_id)
         else:
@@ -179,11 +173,15 @@ async def api_fit(req: FitRequest):
         return JSONResponse({
             'status': 'ok',
             'model': req.model_name,
+            'state_columns': fitter.resolve_state_columns(_sim_df) if hasattr(fitter, 'resolve_state_columns') else {},
             'summary': fitter.summary_json(),
             'predict_trace': predict_trace,
         })
+    except ValueError as e:
+        # 状态列无法解析 / 数据不足等可预期的输入问题
+        return JSONResponse({'error': str(e)}, 400)
     except Exception as e:
-        return JSONResponse({'error': str(e)}, 500)
+        return JSONResponse({'error': f'{type(e).__name__}: {e}'}, 500)
 
 
 @app.get('/api/niche')
