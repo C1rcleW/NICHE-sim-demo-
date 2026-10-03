@@ -16,7 +16,7 @@ import pandas as pd
 import pytest
 
 from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder
-from family_abm.fitting.fitter import ABMFitter, make_fitter
+from family_abm.fitting.fitter import ABMFitter, compare_models, make_fitter
 from family_abm.fitting.lanchester import MODEL_PARAM_NAMES, MODEL_REGISTRY, MODEL_STATE_NAMES
 
 STEPS = 15
@@ -169,31 +169,134 @@ def test_unknown_agent_id_reports_available_ids(sim_df: pd.DataFrame) -> None:
     assert "not-an-agent" in str(excinfo.value)
 
 
-def test_long_horizon_fit_does_not_crash_on_bounds() -> None:
-    """长积分窗口（steps>=120）必须能拟合。
+def test_long_horizon_fit_recovers_known_parameters() -> None:
+    """长窗口（120 步）拟合必须恢复出已知参数。
 
-    回归：scipy 的 L-BFGS-B 有限差分 eps 是绝对步长，时间轴横跨 [0,120] 时扰动点
-    会漂出参数边界，抛 ``ValueError: `x0` violates bound constraints``。
-    修复方式是把积分时间轴缩放到单位长度（见 fitter._integration_scale）。
+    回归背景：曾把 ODE 时间轴按窗口长度缩放到 [0,1]。这在数学上等价于把所有速率
+    参数同乘窗口长度，因此"拟合成功"却得到被整体缩放过的参数——120 步实测
+    R² 从 0.9661 退化到 0.7065、240 步退化到 -0.1377。
+    本测试用已知 (r, K) 合成 logistic 数据再拟合，若时间轴被缩放则 r 会被
+    系统性乘/除窗口长度，断言必然失败。
     """
+    from scipy.integrate import solve_ivp
+
+    from family_abm.fitting.lanchester import logistic_growth
+
+    true_r, true_k = 0.35, 1.2
+    t = np.arange(0.0, 120.0, 1.0)
+    solution = solve_ivp(lambda tt, y: logistic_growth(tt, y, true_r, true_k),
+                         [t[0], t[-1]], [1e-3], t_eval=t, method="RK45", rtol=1e-8, atol=1e-10)
+    assert solution.success
+
+    df = pd.DataFrame({
+        "time": t,
+        "agent_id": "synthetic",
+        "state_population": solution.y[0],
+    })
+
+    fitter = make_fitter("logistic")
+    fitter.fit_from_dataframe(df)
+    recovered_r = fitter.fitted_param_dict["r"]
+    recovered_k = fitter.fitted_param_dict["K"]
+
+    assert recovered_r == pytest.approx(true_r, rel=0.15), (
+        f"恢复的 r={recovered_r} 与真值 {true_r} 偏差过大——时间轴可能被缩放"
+    )
+    assert recovered_k == pytest.approx(true_k, rel=0.15), f"恢复的 K={recovered_k} 与真值 {true_k} 偏差过大"
+    assert fitter.r_squared > 0.99, f"R²={fitter.r_squared} 过低"
+
+
+def test_fit_accepts_scipy_bounds_object() -> None:
+    """bounds 同时接受 list[(lo,hi)] 与 scipy.optimize.Bounds。"""
+    from scipy.optimize import Bounds
+
+    recorder, _ = build_recorder(record_initial=True, steps=40)
+    df = recorder.to_dataframe()
+
+    fitter = make_fitter("wellbeing")
+    fitter.fit_from_dataframe(df, bounds=Bounds(lb=[1e-4] * 5, ub=[5.0] * 5))
+    assert fitter.bounds == [(1e-4, 5.0)] * 5
+    assert fitter.r_squared is not None
+
+    with pytest.raises(ValueError, match="边界数量"):
+        make_fitter("wellbeing").fit_from_dataframe(df, bounds=[(0.0, 1.0)] * 3)
+
+
+def test_compare_models_accepts_state_mappings() -> None:
+    """compare_models 必须能为抽象模型传入映射（此前传 state_mapping= 会 TypeError）。"""
+    recorder, _ = build_recorder(record_initial=True, steps=40)
+    df = recorder.to_dataframe()
+
+    results = compare_models(
+        df,
+        ["wellbeing", "square_law"],
+        robust=False,
+        state_mappings={"square_law": {"R1": "state_happiness", "R2": "state_stress"}},
+    )
+    assert set(results) == {"wellbeing", "square_law"}
+    assert results["square_law"]._resolved_columns == {"R1": "state_happiness", "R2": "state_stress"}
+
+    with pytest.raises(ValueError, match="未请求的模型"):
+        compare_models(df, ["wellbeing"], robust=False, state_mappings={"square_law": {}})
+
+
+def test_web_fit_accepts_explicit_state_mapping(sim_df: pd.DataFrame) -> None:
+    """Web /api/fit 支持显式 state_mapping，抽象模型不再永远 400。"""
+    fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    from family_abm.web.app import app as web_app
+
+    client = fastapi_testclient.TestClient(web_app)
+    assert client.post("/api/run", json={"steps": 40}).status_code == 200
+
+    models = client.get("/api/models").json()
+    by_name = {m["name"]: m for m in models["models"]}
+    assert by_name["wellbeing"]["directly_fittable"] is True
+    assert by_name["square_law"]["directly_fittable"] is False
+    assert by_name["square_law"]["missing_states"] == ["R1", "R2"]
+
+    unmapped = client.post("/api/fit", json={"model_name": "square_law", "robust": False})
+    assert unmapped.status_code == 400
+
+    mapped = client.post("/api/fit", json={
+        "model_name": "square_law",
+        "robust": False,
+        "state_mapping": {"R1": "state_happiness", "R2": "state_stress"},
+    })
+    assert mapped.status_code == 200, mapped.text
+    assert mapped.json()["state_columns"] == {"R1": "state_happiness", "R2": "state_stress"}
+
+
+def test_converged_is_false_when_parameters_are_pinned_at_bounds() -> None:
+    """突变测试：把参数钉在下界时 converged 必须为 False。
+
+    历史问题：旧断言写"若有贴边参数则 converged 为 False"，但构造的场景里
+    params_at_bounds 为空，把 converged 硬编码为 True 也能通过（空转测试）。
+    这里显式把 fitted_params_ 设到边界上。
+    """
+    fitter = make_fitter("wellbeing")
+    fitter.bounds = [(1e-4, 5.0)] * fitter.n_params
+    fitter.fit_result = type("R", (), {"success": False, "fun": 0.01, "x": np.array([1e-4] * 5)})()
+
+    assert fitter.converged is False, "优化器未成功时不得判为收敛"
+
+    # 优化器成功 + 目标有限 + R² 有限 -> 收敛为真；贴边只作为告警
+    fitter.fit_result = type("R", (), {"success": True, "fun": 0.01, "x": np.array([1e-4] * 5)})()
+    fitter.fitted_params_ = fitter.fit_result.x
+    fitter.r_squared = 0.97
+    assert fitter.converged is True, "高 R² 的成功拟合不应因参数贴边被判为未收敛"
+
+
+def test_high_r_squared_fit_is_not_reported_as_unconverged() -> None:
+    """真实数据上的高 R² 拟合必须被判定为已收敛（此前贴边误判使 R²=0.97 报 False）。"""
     recorder, _ = build_recorder(record_initial=True, steps=120)
     df = recorder.to_dataframe()
     fitter = make_fitter("wellbeing")
-    result = fitter.fit_from_dataframe(df)  # 修复前此处抛 ValueError
-    assert result.success
-    assert fitter.r_squared is not None
-
-
-def test_integration_scale_only_kicks_in_for_long_windows() -> None:
-    """缩放阈值：跨度 <= 2 时不做缩放；更长窗口按跨度归一。"""
-    tiny = np.array([0.0, 1.0, 2.0])
-    assert ABMFitter._integration_scale(tiny) == pytest.approx(1.0)
-
-    long = np.arange(0.0, 120.0, 1.0)
-    assert ABMFitter._integration_scale(long) == pytest.approx(119.0)
-
-    # 跨度为 0 的退化输入不应除零
-    assert ABMFitter._integration_scale(np.array([5.0, 5.0, 5.0])) == pytest.approx(1.0)
+    fitter.fit_from_dataframe(df)
+    summary = fitter.summary_json()
+    assert summary["r_squared"] > 0.8, summary["r_squared"]
+    assert summary["converged"] is True, (
+        f"R²={summary['r_squared']} 的高质量拟合被判为未收敛；贴边参数={summary['params_at_bounds']}"
+    )
 
 
 def test_web_fit_returns_400_with_hint_for_unmappable_model(sim_df: pd.DataFrame) -> None:

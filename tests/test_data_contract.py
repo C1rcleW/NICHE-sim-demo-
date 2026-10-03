@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import random
+import re
 from pathlib import Path
 
 import numpy as np
@@ -147,6 +148,22 @@ def test_web_api_preserves_null_instead_of_zero() -> None:
     )
 
 
+# ── P1-4 前端侧：零填充不得复活 ──────────────────────────────────────────
+
+
+def test_frontend_does_not_coerce_null_to_zero() -> None:
+    """前端不得用 `r[col] || 0` 把缺失值伪造成 0（这正是 28.6% 偏差的来源）。
+
+    JS 无法在 pytest 里直接执行，因此对源码做模式检查：这条曾经真实存在于
+    dashboard.js 的时序图与拟合图里。
+    """
+    dashboard = Path(__file__).resolve().parent.parent / "family_abm" / "web" / "static" / "js" / "dashboard.js"
+    source = dashboard.read_text(encoding="utf-8")
+    pattern = re.compile(r"\[[A-Za-z_$][\w$]*\]\s*\|\|\s*0\b")
+    offenders = [line.strip() for line in source.splitlines() if pattern.search(line)]
+    assert not offenders, f"发现把缺失值当 0 的写法（应改为 null 检查）：{offenders}"
+
+
 # ── P1-1：上报诚实性 ─────────────────────────────────────────────────────
 
 
@@ -162,13 +179,18 @@ def test_negative_r_squared_is_reported_not_clamped(raw_df: pd.DataFrame) -> Non
     assert fitter.summary_json()["r_squared"] < 0.0
 
 
-def test_converged_requires_no_bound_parameters(raw_df: pd.DataFrame) -> None:
+def test_converged_reports_optimizer_state(raw_df: pd.DataFrame) -> None:
+    """converged 只反映优化器状态；贴边参数作为告警单独暴露。
+
+    注意：这里不断言"有贴边就一定不收敛"——那曾导致 R²=0.97–0.99 的正常拟合被
+    误判。贴边语义的严格测试在 tests/test_simulation_and_fitting.py 的突变测试中。
+    """
     fitter = make_fitter("wellbeing")
     fitter.fit_from_dataframe(raw_df)
     summary = fitter.summary_json()
     assert "params_at_bounds" in summary and "hit_sentinel" in summary
-    if summary["params_at_bounds"]:
-        assert summary["converged"] is False, "存在贴边参数时不应判定为可信收敛"
+    assert summary["converged"] is True
+    assert summary["hit_sentinel"] is False
 
 
 def test_summary_reports_state_columns_and_bounds(raw_df: pd.DataFrame) -> None:
@@ -187,8 +209,14 @@ def test_sentinel_solution_is_flagged() -> None:
     fitter.bounds = [(1e-4, 5.0)] * fitter.n_params
     fitter.fit_result = type("R", (), {"success": True, "fun": 1e12, "x": np.array([0.5] * 5)})()
     fitter.fitted_params_ = fitter.fit_result.x
-    fitter._bound_params = []
-    assert fitter.converged is False
+    fitter.r_squared = 0.5
+    assert fitter.converged is False, "哨兵解不得判为收敛"
 
+    # 优化器成功 + 目标有限，但 R² 因积分失败而不可计算 -> 仍不算收敛
     fitter.fit_result = type("R", (), {"success": True, "fun": 0.01, "x": np.array([0.5] * 5)})()
+    fitter.r_squared = None
+    assert fitter.converged is False, "R² 不可计算时不得判为收敛"
+
+    # 三个条件都满足才是收敛
+    fitter.r_squared = 0.9
     assert fitter.converged is True

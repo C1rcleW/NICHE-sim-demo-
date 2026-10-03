@@ -17,7 +17,7 @@ from ..family.household import Household
 from ..family.roles import ROLE_REGISTRY
 from ..niche.micro_niche import MicroNiche
 from ..ml.recorder import StateRecorder
-from ..fitting.fitter import make_fitter, compare_models
+from ..fitting.fitter import make_fitter
 from ..fitting.lanchester import MODEL_REGISTRY, MODEL_STATE_NAMES
 
 HERE = Path(__file__).resolve().parent
@@ -53,6 +53,10 @@ class FitRequest(BaseModel):
     model_name: str = 'wellbeing'
     agent_id: Optional[str] = None
     robust: bool = True
+    # 抽象模型（square_law 的 R1/R2、influence 的 O1/O2 等）与 ABM 状态列之间没有
+    # 默认语义对应关系，必须由调用方显式给出；默认 None 表示使用
+    # 「状态名 -> state_<状态名>」约定。
+    state_mapping: Optional[dict[str, str]] = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────
@@ -148,6 +152,36 @@ async def api_data():
     })
 
 
+@app.get('/api/models')
+async def api_models():
+    """列出可用模型及其状态名、以及相对当前数据的可映射性。
+
+    前端据此决定下拉里哪些模型可以直接拟合；对不可直接映射的模型给出建议的
+    state_mapping（由调用方核对语义后使用），避免"选了模型却永远 400"。
+    """
+    available_states: list[str] = []
+    if _sim_df is not None:
+        available_states = sorted(c for c in _sim_df.columns if c.startswith('state_'))
+
+    models = []
+    for name, state_names in MODEL_STATE_NAMES.items():
+        expected = {s: f'state_{s}' for s in state_names}
+        resolved = {s: col for s, col in expected.items() if col in available_states}
+        missing = [s for s in state_names if s not in resolved]
+        suggestion = {s: (available_states[i] if i < len(available_states) else f'state_{s}')
+                      for i, s in enumerate(state_names)}
+        models.append({
+            'name': name,
+            'state_names': state_names,
+            'expected_columns': expected,
+            'resolved_columns': resolved,
+            'missing_states': missing,
+            'directly_fittable': not missing,
+            'suggested_mapping': suggestion if missing else expected,
+        })
+    return JSONResponse({'models': models, 'available_state_columns': available_states})
+
+
 @app.post('/api/fit')
 async def api_fit(req: FitRequest):
     global _sim_df, _last_fitter
@@ -155,11 +189,11 @@ async def api_fit(req: FitRequest):
         return JSONResponse({'error': 'No simulation data. POST /api/run first.'}, 400)
 
     try:
-        # 不再自动猜列：只使用「模型状态名 -> state_<状态名>」这一条显式约定。
-        # 抽象模型（square_law 的 R1/R2、influence 的 O1/O2 等）与 ABM 状态列之间
-        # 没有默认语义对应关系，历史上静默映射会把模型拟到无关列（甚至方差为 0 的列）
-        # 上并返回看似合理的 R²=0.878。无法解析时明确报错，由调用方给 state_mapping。
-        fitter = make_fitter(req.model_name)
+        # 不再自动猜列：默认只用「模型状态名 -> state_<状态名>」这一条显式约定，
+        # 抽象模型必须由请求显式提供 state_mapping。
+        # 历史上静默映射会把模型拟到无关列（甚至方差为 0 的列）上并返回看似
+        # 合理的 R²=0.878。
+        fitter = make_fitter(req.model_name, state_mapping=req.state_mapping)
         if req.robust:
             fitter.fit_robust(_sim_df, agent_id=req.agent_id)
         else:
@@ -180,7 +214,7 @@ async def api_fit(req: FitRequest):
         return JSONResponse({
             'status': 'ok',
             'model': req.model_name,
-            'state_columns': fitter.resolve_state_columns(_sim_df) if hasattr(fitter, 'resolve_state_columns') else {},
+            'state_columns': fitter._resolved_columns,
             'summary': fitter.summary_json(),
             'predict_trace': predict_trace,
         })

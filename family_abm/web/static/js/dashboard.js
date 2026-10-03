@@ -25,6 +25,8 @@ const I18N = {
     'setup.kpi_records': '记录条数',
     'charts.warn': '请先运行仿真以查看图表。',
     'charts.timeseries': '时间序列',
+    'charts.no_data': '当前选择下没有可绘制的数据（该 agent 没有对应状态量）。',
+    'fitting.need_mapping': '该模型的状态名与 ABM 列名没有默认对应关系，无法直接拟合。',
     'charts.niche': '生境空间',
     'fitting.warn': '请先运行仿真，然后选择模型进行拟合。',
     'fitting.title': 'ODE模型拟合（兰彻斯特型）',
@@ -88,6 +90,8 @@ const I18N = {
     'setup.kpi_records': 'Records',
     'charts.warn': 'Run a simulation first to see charts.',
     'charts.timeseries': 'Time Series',
+    'charts.no_data': 'No plottable data for the current selection (this agent has no such state).',
+    'fitting.need_mapping': 'This model has no default column mapping and cannot be fitted directly.',
     'charts.niche': 'Niche Space',
     'fitting.warn': 'Run a simulation first, then select a model to fit.',
     'fitting.title': 'ODE Model Fitting (Lanchester-type)',
@@ -358,8 +362,36 @@ async function runSimulation() {
   `;
 
   buildAgentList();
+  await loadModelInfo();
   setStatus('ok', t('status.simDone'));
   document.querySelector('#tabNav button[data-tab="charts"]').click();
+}
+
+// 模型可映射性：抽象模型（square_law/influence/...）的状态名与 ABM 列名没有默认
+// 对应关系，必须显式给出 state_mapping。此前前端只发 model_name/agent_id/robust，
+// 导致 7 个模型里有 6 个在界面上永远返回 400。
+let modelInfo = {};
+
+async function loadModelInfo() {
+  const res = await api('/api/models');
+  if (res.error || !res.models) return;
+  modelInfo = {};
+  res.models.forEach(m => { modelInfo[m.name] = m; });
+
+  const sel = document.getElementById('fitModel');
+  const options = res.models.map(m => {
+    const label = m.directly_fittable ? m.name : `${m.name} （需映射）`;
+    return `<option value="${m.name}">${label}</option>`;
+  });
+  sel.innerHTML = options.join('');
+  if (modelInfo['wellbeing'] && modelInfo['wellbeing'].directly_fittable) sel.value = 'wellbeing';
+}
+
+function currentStateMapping(modelName) {
+  const info = modelInfo[modelName];
+  if (!info) return null;
+  if (info.directly_fittable) return null; // 走默认约定即可
+  return info.suggested_mapping || null;
 }
 
 function buildAgentList() {
@@ -403,11 +435,25 @@ function buildTimeSeries() {
   const stateCols = simData.columns.filter(c => c.startsWith('state_'));
   const traces = stateCols.map(col => {
     const byTime = {};
-    series.forEach(r => { byTime[r.time] = byTime[r.time] || []; byTime[r.time].push(r[col] || 0); });
+    series.forEach(r => {
+      const v = r[col];
+      // 缺失值必须是 null（不是 0）：Household 行没有成员状态列，
+      // 用 `|| 0` 会把"不存在"伪造成 0，使均值比真实值低约 28.6%。
+      if (v === null || v === undefined || Number.isNaN(v)) return;
+      byTime[r.time] = byTime[r.time] || [];
+      byTime[r.time].push(v);
+    });
     const t = Object.keys(byTime).map(Number).sort((a, b) => a - b);
     const vals = t.map(ti => byTime[ti].reduce((a, b) => a + b, 0) / byTime[ti].length);
+    if (!t.length) return null;
     return { x: t, y: vals, type: 'scatter', mode: 'lines', name: col.replace('state_', '') };
-  });
+  }).filter(Boolean);
+  if (!traces.length) {
+    Plotly.purge('chartTimeSeries');
+    document.getElementById('chartTimeSeries').innerHTML =
+      `<div class="loading">${t('charts.no_data')}</div>`;
+    return;
+  }
 
   Plotly.newPlot('chartTimeSeries', traces, {
     ...CHART_THEME, title: t('chart.agent_series'),
@@ -443,10 +489,15 @@ async function runFitting() {
   setStatus('running', t('status.fitting'));
   const model = document.getElementById('fitModel').value;
   const agent = document.getElementById('fitAgent').value || null;
+  const mapping = currentStateMapping(model);
+  if (!mapping && modelInfo[model] && !modelInfo[model].directly_fittable) {
+    setStatus('error', t('fitting.need_mapping'));
+    return;
+  }
 
   const res = await api('/api/fit', {
     method: 'POST',
-    body: JSON.stringify({ model_name: model, agent_id: agent, robust: true }),
+    body: JSON.stringify({ model_name: model, agent_id: agent, robust: true, state_mapping: mapping }),
   });
   if (res.error) { setStatus('error', res.error); return; }
 
@@ -480,8 +531,15 @@ function buildFitChart(res) {
 
   stateCols.forEach(col => {
     const byTime = {};
-    series.forEach(r => { byTime[r.time] = byTime[r.time] || []; byTime[r.time].push(r[col] || 0); });
+    series.forEach(r => {
+      const v = r[col];
+      // 同 buildTimeSeries：null 表示"该 agent 没有这个状态"，不能当 0 参与均值
+      if (v === null || v === undefined || Number.isNaN(v)) return;
+      byTime[r.time] = byTime[r.time] || [];
+      byTime[r.time].push(v);
+    });
     const t = Object.keys(byTime).map(Number).sort((a, b) => a - b);
+    if (!t.length) return;
     const vals = t.map(ti => byTime[ti].reduce((a, b) => a + b, 0) / byTime[ti].length);
     traces.push({ x: t, y: vals, type: 'scatter', mode: 'markers',
       name: col.replace('state_', '') + t('fitting.data_suffix'),

@@ -12,11 +12,8 @@ _RTOL = 1e-6
 _ATOL = 1e-8
 # 失败哨兵：见 P1-2，后续将改为 np.inf 并加发散闸门
 _SENTINEL = 1e12
-# 积分时间轴缩放上限。L-BFGS-B 的有限差分 eps 是绝对的（默认 1.49e-8），
-# 当时间轴横跨 [0,120] 时该步长会引起过大的积分灵敏度，scipy 的 approx_derivative
-# 会因扰动点漂出参数边界而抛 "x0 violates bound constraints"（实测 steps=120 必崩）。
-# 规范化到 [0,1] 后同一数据可正常收敛，且目标函数值与未缩放时逐位接近（相对差 ~4e-8）。
-_SCALE_THRESHOLD = 2.0
+# 判定参数是否"贴边"的绝对容差
+_BOUND_TOL = 1e-6
 
 
 class ABMFitter:
@@ -144,23 +141,22 @@ class ABMFitter:
 
     # ── Objective ────────────────────────────────────────────────────────
 
-    @staticmethod
-    def _integration_scale(t: np.ndarray) -> float:
-        """把积分窗口缩放到单位长度，避免长时间轴下的有限差分越界（见 _SCALE_THRESHOLD）。"""
-        span = float(t[-1] - t[0]) if len(t) > 1 else 1.0
-        return span if span > _SCALE_THRESHOLD else 1.0
-
     def _solve(self, params: np.ndarray, t: np.ndarray, y0: np.ndarray) -> Optional[np.ndarray]:
-        """在缩放过的时间轴上积分模型，返回形状为 (len(t), n_states) 的预测值。"""
-        scale = self._integration_scale(t)
-        t_scaled = (t - t[0]) / scale
-        step = float(np.diff(t_scaled).mean()) if len(t_scaled) > 1 else float(t_scaled[-1] or 1.0)
+        """在**原始时间轴**上积分模型，返回形状为 (len(t), n_states) 的预测值。
+
+        重要：时间自变量必须原样传给模型，**不能**做归一化/缩放。
+        把 t 压缩到单位区间在数学上等价于把所有速率参数同乘该区间长度
+        （ODE 对时间的缩放会改变解），会让拟合参数随数据窗口漂移。
+        实测（5 人 2 户，seed=3）：steps=120 时缩放 R²=0.7065、``r``/``s`` 贴上界；
+        steps=240 时 R²=-0.1377；撤销缩放后分别为 0.9661 与 0.9390 且无贴边参数。
+        """
+        step = float(np.diff(t).mean()) if len(t) > 1 else float(abs(t[-1]) or 1.0)
 
         def rhs(t_, y_):
             return np.array(self.model_func(t_, list(y_), *params))
 
         try:
-            sol = solve_ivp(rhs, [t_scaled[0], t_scaled[-1]], y0, t_eval=t_scaled,
+            sol = solve_ivp(rhs, [t[0], t[-1]], y0, t_eval=t,
                             method='RK45', rtol=_RTOL, atol=_ATOL, max_step=step)
         except Exception:
             return None
@@ -213,12 +209,10 @@ class ABMFitter:
         n = self.n_params
         if p0 is None:
             p0 = [0.5] * n
-        if bounds is None:
-            bounds = [(1e-4, 5.0)] * n
-        self.bounds = list(bounds)
+        self.bounds = self._normalize_bounds(bounds, n)
 
         result = minimize(self._objective, p0, args=(t, y_true, y_true[0]),
-                          method=method, bounds=bounds,
+                          method=method, bounds=self.bounds,
                           options={'maxiter': 5000, 'ftol': 1e-12})
         self._save_result(result, y_true, t)
         return result
@@ -245,9 +239,8 @@ class ABMFitter:
         self._t, self._y_true, self._y0 = t, y_true, y_true[0]
 
         n = self.n_params
-        if bounds is None:
-            bounds = [(1e-4, 5.0)] * n
-        self.bounds = list(bounds)
+        self.bounds = self._normalize_bounds(bounds, n)
+        bounds = self.bounds
 
         rng = np.random.RandomState(seed)
         best_result = None
@@ -284,9 +277,8 @@ class ABMFitter:
         self._t, self._y_true, self._y0 = t, y_true, y_true[0]
 
         n = self.n_params
-        if bounds is None:
-            bounds = [(1e-4, 5.0)] * n
-        self.bounds = list(bounds)
+        self.bounds = self._normalize_bounds(bounds, n)
+        bounds = self.bounds
 
         result = differential_evolution(
             self._objective, bounds, args=(t, y_true, y_true[0]),
@@ -296,6 +288,29 @@ class ABMFitter:
         return result
 
     # ── Internals ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _normalize_bounds(bounds: Any, n: int) -> list[tuple[float, float]]:
+        """把边界规范化为 list[(lo, hi)]。
+
+        同时接受 ``list[(lo, hi)]``（本库历史用法）与 ``scipy.optimize.Bounds``
+        （用户很自然会传）。后者在阶段 B 曾因直接 ``list(bounds)`` 而抛
+        TypeError，现在两者都能用。
+        """
+        if bounds is None:
+            return [(1e-4, 5.0)] * n
+        if hasattr(bounds, "lb") and hasattr(bounds, "ub"):
+            lower = np.atleast_1d(np.asarray(bounds.lb, dtype=float))
+            upper = np.atleast_1d(np.asarray(bounds.ub, dtype=float))
+            if lower.size == 1:
+                lower = np.repeat(lower, n)
+            if upper.size == 1:
+                upper = np.repeat(upper, n)
+            return [(float(lo), float(hi)) for lo, hi in zip(lower, upper)]
+        pairs = [(float(lo), float(hi)) for lo, hi in bounds]
+        if len(pairs) != n:
+            raise ValueError(f'边界数量 ({len(pairs)}) 与参数数量 ({n}) 不一致')
+        return pairs
 
     def _save_result(self, result: Any, y_true: np.ndarray, t: np.ndarray) -> None:
         self.fitted_params_ = result.x
@@ -309,8 +324,12 @@ class ABMFitter:
         self.r_squared = self._r_squared(result.x, t, y_true, y_true[0])
         self._bound_params = self._parameters_at_bounds(result.x)
 
-    def _parameters_at_bounds(self, params: np.ndarray, tol: float = 1e-8) -> list[str]:
-        """返回贴在上/下界的参数名（优化被边界截断的直接证据）。"""
+    def _parameters_at_bounds(self, params: np.ndarray, tol: float = _BOUND_TOL) -> list[str]:
+        """返回贴在上/下界的参数名（**仅用于告警**，不参与 converged 判定）。
+
+        参数贴边可能有正当原因（例如 logistic 的 K、influence 的 target 天然可能落在
+        边界），因此它表示"该方向可能不可辨识或边界不合适"，而不是"拟合不可用"。
+        """
         hit: list[str] = []
         for name, value, (lower, upper) in zip(self.param_names, params, self.bounds or []):
             if abs(float(value) - float(lower)) <= tol or abs(float(value) - float(upper)) <= tol:
@@ -339,16 +358,26 @@ class ABMFitter:
 
     @property
     def converged(self) -> bool:
-        """是否可认为得到"可信拟合"。
+        """优化器是否给出了可用解。
 
-        三个条件缺一不可：优化器报告成功、目标函数没有停在失败哨兵上、
-        且没有参数被边界钉住。R² 为负本身不再被判为"未收敛"——它是"确实拟合得很差"
-        的证据，应当被如实上报而不是被隐藏。
+        判定条件（**只看优化器**）：
+        1. 优化器报告成功（``success`` 为真，即没有超出迭代/函数求值上限）；
+        2. 目标函数没有停在失败哨兵上（积分失败时 MSE 无意义）；
+        3. R² 可计算（积分能跑通）且为有限值。
+
+        参数"贴边"与负 R² 都**不**在此否决：它们分别表示"该方向可能不可辨识"
+        与"拟合确实很差"，是应当如实上报的诊断信息（见 ``params_at_bounds`` /
+        ``r_squared``），而不是把一次成功的高 R² 拟合误判为不收敛。
+        历史教训：曾把 `r_squared > 0` 与"无贴边参数"塞进 converged，
+        导致 R²=0.97–0.99 的正常拟合被判为未收敛。
         """
-        return (self.fit_result is not None and
-                bool(self.fit_result.success) and
-                not self._objective_hit_sentinel() and
-                not self._bound_params)
+        if self.fit_result is None or not bool(self.fit_result.success):
+            return False
+        if self._objective_hit_sentinel():
+            return False
+        if self.r_squared is None:
+            return False
+        return bool(np.isfinite(self.r_squared))
 
     def summary_json(self) -> dict[str, Any]:
         r2 = None
@@ -443,11 +472,30 @@ def compare_models(
     model_names: list[str],
     agent_id: Optional[str] = None,
     robust: bool = True,
+    state_mappings: Optional[dict[str, dict[str, str]]] = None,
     **fit_kwargs,
 ) -> dict[str, ABMFitter]:
-    results = {}
+    """依次拟合多个模型并返回结果。
+
+    Parameters
+    ----------
+    state_mappings : dict[str, dict[str, str]], optional
+        按模型名给出各自的 ``state_mapping``。抽象模型（square_law/influence/
+        lotka_volterra/resource_competition/logistic）的状态名与 ABM 列名没有默认
+        对应关系，必须在此声明；否则这些模型会直接报错（这是刻意的，避免静默
+        把模型拟到无关列上）。
+
+        历史实现无法传入映射，导致 7 个模型里 6 个在此函数中完全不可用
+        （传 ``state_mapping=`` 会因签名不匹配抛 TypeError）。
+    """
+    mappings = state_mappings or {}
+    unknown = sorted(set(mappings) - set(model_names))
+    if unknown:
+        raise ValueError(f'state_mappings 含有未请求的模型：{unknown}')
+
+    results: dict[str, ABMFitter] = {}
     for name in model_names:
-        fitter = make_fitter(name)
+        fitter = make_fitter(name, state_mapping=mappings.get(name))
         if robust:
             fitter.fit_robust(df, agent_id=agent_id, **fit_kwargs)
         else:
