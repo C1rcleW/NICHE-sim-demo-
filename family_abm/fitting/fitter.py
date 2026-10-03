@@ -89,18 +89,16 @@ class ABMFitter:
     def _format_mapping_error(self, missing: list[str], available: list[str]) -> str:
         state_columns = [c for c in available if c.startswith(_STATE_PREFIX)]
         expected = [self._resolve_col(s) for s in missing]
-        # 按顺序给出"可用列足够时"的一个候选映射，仅供示意，不做任何自动应用
-        suggestion = {
-            state: (state_columns[i] if i < len(state_columns) else f'{_STATE_PREFIX}{state}')
-            for i, state in enumerate(self.state_names)
-        }
         parts = [
             f'模型状态 {missing} 找不到对应数据列。',
             f'期望列名：{expected}',
             f'可用状态列：{state_columns}',
-            f'请显式传入 state_mapping（示意，需按语义核对）：{suggestion}',
-            '抽象状态名（O1/O2/R1/R2/P/Q）与 ABM 具体状态列之间没有默认对应关系，必须由调用方声明语义；'
-            '此前 Web 层的自动猜列会把模型拟到无关列上并返回看似合理的 R²。',
+            '请显式传入 state_mapping。',
+            '注意：本错误信息**不再**给出按字母序的"示意映射"——那样很容易把模型拟到'
+            '与语义无关甚至零方差的列上（例如 Household 专属的 state_cultural_level），'
+            '从而得到 R²=0.0 却 converged=True 的误导结果。'
+            '需要候选建议时请用 Web 端的 GET /api/models（它会按列的时间方差过滤），'
+            '但语义对应关系仍须由调用方核对。',
         ]
         return '\n'.join(parts)
 

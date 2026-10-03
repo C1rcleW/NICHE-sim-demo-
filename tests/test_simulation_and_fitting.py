@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from pathlib import Path
 
 import numpy as np
@@ -293,6 +294,75 @@ def test_api_models_excludes_constant_columns_from_suggestions() -> None:
                 assert column not in payload["constant_state_columns"], (
                     f"{model['name']} 的建议映射包含零方差列 {column}"
                 )
+        # 默认映射命中但该列为常量时，不得再声称可直接拟合
+        if model["directly_fittable"]:
+            for column in model["expected_columns"].values():
+                assert column in payload["usable_state_columns"]
+
+
+def test_models_endpoint_marks_needs_manual_mapping_when_candidates_run_out() -> None:
+    """候选列不足时必须 needs_manual_mapping=True 且不给建议（此前零覆盖）。"""
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+    # 只有 1 个有变化的 state_ 列，而 two-state 模型需要 2 个
+    frame = pd.DataFrame({
+        "time": [0, 1, 2, 3],
+        "state_only_changing": [0.1, 0.3, 0.5, 0.7],
+        "state_pinned": [1.0, 1.0, 1.0, 1.0],
+    })
+    original = web_app_module._sim_df
+    web_app_module._sim_df = frame
+    try:
+        payload = asyncio.run(web_app_module.api_models())
+        body = json.loads(payload.body)
+    finally:
+        web_app_module._sim_df = original
+
+    assert body["usable_state_columns"] == ["state_only_changing"]
+    assert body["constant_state_columns"] == ["state_pinned"]
+
+    wellbeing = next(m for m in body["models"] if m["name"] == "wellbeing")
+    # 默认映射 state_happiness/state_stress 都不存在
+    assert wellbeing["directly_fittable"] is False
+    assert set(wellbeing["missing_states"]) == {"happiness", "stress"}
+    # 只有 1 个候选而需要 2 个 -> 不能给建议，必须标记人工指定
+    assert wellbeing["needs_manual_mapping"] is True, wellbeing
+    assert not wellbeing["suggested_mapping"]
+
+    logistic = next(m for m in body["models"] if m["name"] == "logistic")
+    # 需要 1 个状态、有 1 个候选 -> 可以给出建议
+    assert logistic["needs_manual_mapping"] is False
+    assert logistic["suggested_mapping"] == {"population": "state_only_changing"}
+
+
+def test_variance_report_uses_time_aggregated_target_not_pooled_span() -> None:
+    """方差判据必须针对拟合目标序列（按 time 聚合），而不是全表 pooled 跨度。
+
+    回归：pooled min/max 会把"每个 agent 各自恒定、但不同 agent 取值不同"的列
+    误判为有变化，而拟合用的恰恰是按 time 聚合后的序列。
+    """
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+    frame = pd.DataFrame({
+        "time": [0, 1, 2, 0, 1, 2],
+        # 每个 agent 在时间上恒定，但两个 agent 取值不同 -> pooled 跨度很大
+        "state_per_agent_constant": [0.1, 0.1, 0.1, 0.9, 0.9, 0.9],
+        # 真正随时间变化
+        "state_time_varying": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+        # 完全常量
+        "state_flat": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+    })
+
+    usable, constant, unverifiable = web_app_module._column_variance_report(frame)
+    assert usable == ["state_time_varying"], f"usable={usable}"
+    assert set(constant) == {"state_flat", "state_per_agent_constant"}, f"constant={constant}"
+    assert unverifiable == []
+
+    # pooled 跨度确实很大，证明"用 pooled 判据"会把它误判为可用
+    assert frame["state_per_agent_constant"].max() - frame["state_per_agent_constant"].min() > 0.7
 
 
 def test_api_fit_returns_400_when_all_starts_fail() -> None:
@@ -315,11 +385,15 @@ def test_api_fit_returns_400_when_all_starts_fail() -> None:
     assert "error" in body
 
 
-def test_web_fit_maps_sentinel_solution_to_400(monkeypatch: pytest.MonkeyPatch) -> None:
-    """优化停在哨兵上必须映射为 400（带 status=model_not_applicable），而非 500。
+def test_web_fit_returns_200_with_warning_for_sentinel_solution(monkeypatch: pytest.MonkeyPatch) -> None:
+    """哨兵解返回 200 + status=model_not_applicable + warning。
 
-    这里用确定性桩替换 fitter：靠真实模型"必然失败"来做断言是不可靠的
-    （实测 square_law 在某些列组合上也能找到 R²=0.74 的可用解）。
+    设计取舍（经复核指出后修正）：此前的实现一旦命中哨兵就返回 400，而前端对任何
+    ``res.error`` 都提前 return，导致 dashboard.js 里的"命中哨兵告警条"成为永不执行的
+    死代码。诊断信息必须能到达界面，因此哨兵解走 200 路径并在 UI 上以告警条呈现。
+
+    这里用确定性桩替换 fitter：靠真实模型"必然失败"来做断言不可靠
+    （实测 square_law 在某些列组合上也能得到 R²=0.74）。
     """
     import asyncio
     import importlib
@@ -332,6 +406,7 @@ def test_web_fit_maps_sentinel_solution_to_400(monkeypatch: pytest.MonkeyPatch) 
         n_states = 2
         _t = None
         _y0 = None
+        _resolved_columns = {"R1": "state_a", "R2": "state_b"}
         fitted_param_dict = {"alpha": 0.5}
         state_names = ["R1", "R2"]
 
@@ -339,20 +414,48 @@ def test_web_fit_maps_sentinel_solution_to_400(monkeypatch: pytest.MonkeyPatch) 
             return type("R", (), {"success": True, "fun": 1e12})()
 
         def summary_json(self):
-            return {"hit_sentinel": True, "r_squared": None, "converged": False}
+            return {"hit_sentinel": True, "r_squared": None, "converged": False, "params_at_bounds": []}
 
     monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: _SentinelFitter())
     monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
 
     response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="square_law", robust=False)))
-    assert response.status_code == 400
+    assert response.status_code == 200, response.body
     payload = json.loads(response.body)
     assert payload["status"] == "model_not_applicable"
-    assert "哨兵" in payload["error"]
+    assert payload["warning"] and "哨兵" in payload["warning"]
+    assert payload["summary"]["hit_sentinel"] is True
+
+
+def test_web_fit_maps_optimizer_failure_to_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    """优化器自身失败（success=False）映射为 400 + status=optimizer_failed。"""
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    class _FailedOptimizerFitter:
+        n_states = 2
+        _t = None
+        _y0 = None
+        state_names = ["R1", "R2"]
+
+        def fit_from_dataframe(self, df, agent_id=None):
+            return type("R", (), {"success": False, "fun": 0.01})()
+
+        def summary_json(self):
+            return {"hit_sentinel": False, "r_squared": 0.0, "converged": False}
+
+    monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: _FailedOptimizerFitter())
+    monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
+
+    response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="wellbeing", robust=False)))
+    assert response.status_code == 400
+    assert json.loads(response.body)["status"] == "optimizer_failed"
 
 
 def test_web_fit_maps_all_starts_failure_to_400(monkeypatch: pytest.MonkeyPatch) -> None:
-    """多起点全部失败抛出的 RuntimeError 必须映射为 400。"""
+    """多起点全部失败抛出的 RuntimeError 必须映射为 400（仅拟合阶段的异常）。"""
     import asyncio
     import importlib
 
@@ -376,6 +479,95 @@ def test_web_fit_maps_all_starts_failure_to_400(monkeypatch: pytest.MonkeyPatch)
     response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="resource_competition", robust=True)))
     assert response.status_code == 400
     assert json.loads(response.body)["status"] == "all_starts_failed"
+
+
+def test_web_fit_does_not_mask_prediction_failure_as_400(monkeypatch: pytest.MonkeyPatch) -> None:
+    """拟合成功但 predict() 抛 RuntimeError 时必须暴露为 500，而不是误诊成 all_starts_failed。
+
+    回归：此前 `except RuntimeError` 包住了整个流程，predict() 的 RuntimeError
+    被改写成 400 all_starts_failed（诊断错误且丢失 summary）。
+    """
+    import asyncio
+    import importlib
+
+    web_app_module = importlib.import_module("family_abm.web.app")
+
+    class _PredictFailsFitter:
+        n_states = 2
+        fitted_param_dict = {"p": 0.5}
+        state_names = ["happiness", "stress"]
+        _resolved_columns = {"happiness": "state_happiness", "stress": "state_stress"}
+        _y0 = np.array([0.5, 0.3])
+
+        def __init__(self):
+            self._t = np.array([0.0, 1.0])
+
+        def fit_from_dataframe(self, df, agent_id=None):
+            return type("R", (), {"success": True, "fun": 0.01})()
+
+        def predict(self, t, y0):
+            raise RuntimeError("predict exploded")
+
+        def summary_json(self):
+            return {"hit_sentinel": False, "r_squared": 0.9, "converged": True, "params_at_bounds": []}
+
+    monkeypatch.setattr(web_app_module, "make_fitter", lambda *a, **k: _PredictFailsFitter())
+    monkeypatch.setattr(web_app_module, "_sim_df", pd.DataFrame({"time": [0, 1], "state_happiness": [0.1, 0.2]}))
+
+    response = asyncio.run(web_app_module.api_fit(web_app_module.FitRequest(model_name="wellbeing", robust=False)))
+    assert response.status_code == 500
+    assert json.loads(response.body)["status"] == "prediction_failed"
+
+
+def test_web_fit_unknown_model_returns_400() -> None:
+    """未知 model_name 必须返回 400（而不是让 KeyError 落到 500）。"""
+    fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    from family_abm.web.app import app as web_app
+
+    client = fastapi_testclient.TestClient(web_app)
+    assert client.post("/api/run", json={"steps": 20}).status_code == 200
+
+    response = client.post("/api/fit", json={"model_name": "no_such_model", "robust": False})
+    assert response.status_code == 400, response.text
+    body = response.json()
+    assert body["status"] == "unknown_model"
+    assert "wellbeing" in body["error"]
+
+
+def test_frontend_warns_on_non_positive_r_squared() -> None:
+    """即使没命中哨兵，R²<=0 也必须有可见告警（converged=True 只说明优化器跑完了）。
+
+    回归：square_law 在 UI 实际使用的 robust=true 下可得到 R²=-14.35/-94265.68
+    且 converged=True，此前界面上没有任何提示。
+    """
+    dashboard = Path(__file__).resolve().parent.parent / "family_abm" / "web" / "static" / "js" / "dashboard.js"
+    source = dashboard.read_text(encoding="utf-8")
+    assert "fitting.warn_r2_nonpositive" in source, "缺少 R² 非正告警"
+    assert "s.r_squared <= 0" in source, "缺少触发 R² 非正告警的条件"
+    # 双语字典都要有该键（各自以 'fitting.warn_r2_nonpositive': 形式出现一次）
+    assert source.count("fitting.warn_r2_nonpositive':") == 2, "该 i18n 键应同时存在于中英文字典"
+
+
+def test_fit_diagnostics_do_not_expose_alphabetical_mapping_suggestion() -> None:
+    """fitter 的错误信息不得再按字母序给出"示意映射"。
+
+    回归：按字母序取列会把 state_cultural_level（Household 常量列）当作建议，
+    把模型拟到零方差列上得到 R²=0.0 却 converged=True。
+    """
+    from family_abm.fitting.fitter import ABMFitter
+    from family_abm.fitting.lanchester import MODEL_PARAM_NAMES, MODEL_REGISTRY, MODEL_STATE_NAMES
+
+    fitter = ABMFitter(
+        MODEL_REGISTRY["influence"],
+        MODEL_PARAM_NAMES["influence"],
+        MODEL_STATE_NAMES["influence"],
+    )
+    message = fitter._format_mapping_error(["O1", "O2"], ["time", "state_cultural_level", "state_happiness"])
+    # 不应内嵌任何实际映射字典（形如 {'O1': 'state_...'}）
+    assert not re.search(r"\{\s*'?O1'?\s*:\s*'?state_", message), f"不应再内嵌示意映射：{message}"
+    assert "state_cultural_level" not in message.split("可用状态列")[0], "不应把常量列当作建议列"
+    assert "/api/models" in message, "应指向带方差过滤的候选接口"
+    assert "state_mapping" in message
 
 
 def test_converged_reflects_optimizer_state_not_bound_hits() -> None:

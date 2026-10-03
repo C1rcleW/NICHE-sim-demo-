@@ -31,6 +31,7 @@ const I18N = {
     'fitting.manual_suffix': ' （需人工指定映射）',
     'fitting.warn_sentinel': '优化停在失败哨兵：该解未成功积分，R² 无意义。',
     'fitting.warn_bounds': '参数被边界钉住：{0}（该方向可能不可辨识或边界不合适）。',
+    'fitting.warn_r2_nonpositive': 'R² 非正：该模型结构不适合这些状态列，Converged 只表示优化器跑完了。',
     'charts.niche': '生境空间',
     'fitting.warn': '请先运行仿真，然后选择模型进行拟合。',
     'fitting.title': 'ODE模型拟合（兰彻斯特型）',
@@ -100,6 +101,7 @@ const I18N = {
     'fitting.manual_suffix': ' (manual mapping required)',
     'fitting.warn_sentinel': 'Optimizer stopped on the failure sentinel: the solution never integrated, R^2 is meaningless.',
     'fitting.warn_bounds': 'Parameters pinned at bounds: {0} (that direction may be unidentifiable or the bounds unsuitable).',
+    'fitting.warn_r2_nonpositive': 'Non-positive R^2: this model structure does not suit these state columns; Converged only means the optimizer finished.',
     'charts.niche': 'Niche Space',
     'fitting.warn': 'Run a simulation first, then select a model to fit.',
     'fitting.title': 'ODE Model Fitting (Lanchester-type)',
@@ -388,13 +390,18 @@ async function loadModelInfo() {
 
   const sel = document.getElementById('fitModel');
   const options = res.models.map(m => {
-    const suffix = m.directly_fittable
-      ? ''
-      : (m.needs_manual_mapping ? t('fitting.manual_suffix') : t('fitting.mapping_suffix'));
+    // 无法直接映射、且候选列不足以自动给出映射的模型：置灰不可选。
+    // 此前只标注"需人工指定"但页面上没有映射输入控件，等于给用户一个死路。
+    if (m.needs_manual_mapping) {
+      return `<option value="${m.name}" disabled>${m.name}${t('fitting.manual_suffix')}</option>`;
+    }
+    const suffix = m.directly_fittable ? '' : t('fitting.mapping_suffix');
     return `<option value="${m.name}">${m.name}${suffix}</option>`;
   });
   sel.innerHTML = options.join('');
-  if (modelInfo['wellbeing'] && modelInfo['wellbeing'].directly_fittable) sel.value = 'wellbeing';
+  const preferred = ['wellbeing', 'influence', 'logistic', 'square_law', 'linear_law', 'lotka_volterra', 'resource_competition'];
+  const pick = preferred.find(n => modelInfo[n] && !modelInfo[n].needs_manual_mapping);
+  if (pick) sel.value = pick;
 }
 
 function currentStateMapping(modelName) {
@@ -519,9 +526,14 @@ async function runFitting() {
   const s = res.summary;
   // 告警必须可见：贴边参数表示该方向可能不可辨识；哨兵命中表示解本身无效。
   const warnings = [];
+  if (res.warning) warnings.push(res.warning);
   if (s.hit_sentinel) warnings.push(t('fitting.warn_sentinel'));
   if (s.params_at_bounds && s.params_at_bounds.length) {
     warnings.push(t('fitting.warn_bounds', s.params_at_bounds.join(', ')));
+  }
+  // R² 非正时也要显式提示：converged 只说明优化器跑完了，不代表模型适用
+  if (s.r_squared !== null && s.r_squared <= 0) {
+    warnings.push(t('fitting.warn_r2_nonpositive'));
   }
   document.getElementById('fitKPIs').innerHTML = `
     <div class="result-kpi"><div class="value">${s.r_squared !== null ? s.r_squared.toFixed(4) : '\u2014'}</div><div class="label">R^2</div></div>
@@ -558,10 +570,12 @@ function buildFitChart(res) {
       byTime[r.time] = byTime[r.time] || [];
       byTime[r.time].push(v);
     });
-    const t = Object.keys(byTime).map(Number).sort((a, b) => a - b);
-    if (!t.length) return;
-    const vals = t.map(ti => byTime[ti].reduce((a, b) => a + b, 0) / byTime[ti].length);
-    traces.push({ x: t, y: vals, type: 'scatter', mode: 'markers',
+    // 变量名不要用 t：它会遮蔽上面的 i18n 函数 t()，导致下面 t('fitting.data_suffix')
+    // 抛 "TypeError: t is not a function"（每次成功拟合都在绘图阶段中断）
+    const timeKeys = Object.keys(byTime).map(Number).sort((a, b) => a - b);
+    if (!timeKeys.length) return;
+    const vals = timeKeys.map(ti => byTime[ti].reduce((a, b) => a + b, 0) / byTime[ti].length);
+    traces.push({ x: timeKeys, y: vals, type: 'scatter', mode: 'markers',
       name: col.replace('state_', '') + t('fitting.data_suffix'),
       marker: { size: 4 }, opacity: 0.6 });
   });
