@@ -55,7 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--import-only",
         action="store_true",
-        help="在当前环境验证（用于 editable 安装）",
+        help="在当前环境验证（用于 editable / 已安装环境）",
     )
     args = parser.parse_args(argv)
 
@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         label = "当前环境（editable/开发安装）"
 
-    # 必须在导入 app 之前切换 cwd：避免源码树 / cwd 遮蔽已安装的包
+    # 必须在导入 app 之前切换 cwd：避免 cwd 遮蔽已安装的包
     os.chdir(tempfile.gettempdir())
 
     print(f"== family_abm 安装冒烟验证（{label}）==")
@@ -85,7 +85,18 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # pragma: no cover - 失败路径由调用方观察
         print(f"[FAIL] import family_abm -> {type(exc).__name__}: {exc}")
         return 1
-    print(f"[PASS] import family_abm -> {family_abm.__file__}")
+
+    # 诚实性检查：`python tools/verify_install.py` 会把 tools/ 的父目录放进
+    # sys.path[0]，可能让"仓库副本"冒充"已安装副本"从而给出无意义的绿。
+    loaded_from = Path(family_abm.__file__).resolve()
+    repo_copy = (Path(__file__).resolve().parent.parent / "family_abm").resolve()
+    if not args.target and loaded_from.parent == repo_copy:
+        check(
+            False,
+            "检测到测试的是仓库源码副本而非已安装副本",
+            f"{loaded_from.parent}；请改用 `python tools/verify_install.py <install-target>` 或从仓库外的 cwd 以 --import-only 运行",
+        )
+    print(f"[PASS] import family_abm -> {loaded_from}")
 
     pkg_dir = Path(family_abm.__file__).resolve().parent
     templates_dir = pkg_dir / "web" / "templates"
