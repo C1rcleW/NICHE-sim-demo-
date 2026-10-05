@@ -50,7 +50,7 @@ python -m family_abm.web
 | **Fitting（拟合）** | 选择 ODE 模型，拟合仿真数据，查看 R² 与参数估计值。 |
 | **Network（网络）** | 家庭关系网络图（情感、信任、冲突可视化）。|
 
-右上角 ⚙ 按钮切换 **English / 简体中文**。
+右上角 ⚙ 按钮切换 **English / 简体中文**
 
 <img width="2531" height="1264" alt="image" src="https://github.com/user-attachments/assets/d9c9b193-79bd-4528-a2a1-df1b5b90dbc5" />
 
