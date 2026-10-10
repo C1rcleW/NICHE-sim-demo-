@@ -400,5 +400,17 @@ CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试
 
 `0.x` 阶段的 API 尚未稳定，次版本号可能包含不兼容改动。
 
-发布流程：更新版本号与 CHANGELOG → 打 `v*` tag 并推送 → CI 的 `release` job
-自动构建 wheel 与 sdist 并附加到对应 Release。
+### 发布流程
+
+1. 更新 `pyproject.toml` 与 `family_abm/__init__.py` 的版本号，并在 `CHANGELOG.md` 记录变更
+   （两者一致性由 `tests/test_packaging.py` 强制）
+2. 打 tag 并推送：`git tag -a v0.1.1 -m "..." && git push origin v0.1.1`
+3. CI 的 `release` job 自动构建 wheel 与 sdist、创建 Release 并附加产物
+   （Release 不存在时自动创建；带 `-rc.1` 这类后缀的 tag 自动标记为 pre-release）
+4. 用工具生成结构化发布说明，粘贴到 Release 覆盖自动生成的正文：
+
+   ```bash
+   python tools/extract_release_notes.py 0.1.1 docs/release-notes-0.1.1.md
+   ```
+
+产物版本号与 tag 的一致性由 CI 强制校验，不一致会直接失败。
