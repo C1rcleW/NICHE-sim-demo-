@@ -101,13 +101,18 @@ def test_t0_state_is_reproducible() -> None:
     assert t0(2026) != t0(99)
 
 
-def test_without_seed_falls_back_to_global_random() -> None:
-    """不给 seed 时保持旧行为（依赖全局 random），但显式播种后仍可复现。"""
-    random.seed(5)
+def test_without_seed_is_still_reproducible() -> None:
+    """不传 seed 也必须可复现（默认 seed=42）。
+
+    回归：早先无 seed 时智能体初始化会退回全局 ``random``，同一份配置两次运行
+    结果不同；对研究用途而言这是不可接受的行为。
+    """
     a = signature(build(seed=None, steps=40))
-    random.seed(5)
     b = signature(build(seed=None, steps=40))
-    assert a == b, "无 seed 时显式播种全局 random 也应可复现"
+    assert a == b, "不传 seed 时结果不可复现"
+
+    # 显式传入默认值应得到相同结果
+    assert signature(build(seed=42, steps=40)) == a, "默认 seed 与显式 42 应一致"
 
 
 # ── 校准 ──────────────────────────────────────────────────────────────────
@@ -198,9 +203,16 @@ def test_education_protects_total_health_decay() -> None:
 
 
 def test_parameters_still_exposed_and_typed() -> None:
-    """校准只应改数值/命名，不应改变参数个数与类型。"""
-    assert len(DEFAULT_PARAMS) == 19
+    """参数集合应保持可枚举、类型正确，且关键参数齐全。
+
+    这里用"下界 + 必备键"而不是精确计数：精确计数会在每次有意扩展机制时
+    产生无意义的测试改动，反而掩盖真正需要关注的缺失项。
+    """
+    assert len(DEFAULT_PARAMS) >= 24
     assert all(isinstance(v, (int, float)) for v in DEFAULT_PARAMS.values())
     for key in ("health_floor", "health_decay_rate", "health_edu_protection",
-                "stress_base", "stress_work_add"):
+                "stress_base", "stress_work_add",
+                "stress_pressure_gain", "income_baseline",
+                "influence_strength", "income_support",
+                "use_life_stage_susceptibility", "role_switch"):
         assert key in DEFAULT_PARAMS

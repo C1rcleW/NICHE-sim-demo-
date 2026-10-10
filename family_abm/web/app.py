@@ -77,11 +77,20 @@ async def api_params():
     groups = {
         "Education": ["education_rate"],
         "Income": ["income_base", "income_edu_boost", "income_age_peak", "income_age_spread"],
-        "Health": ["health_decay_base", "health_decay_age", "health_edu_protection"],
-        "Stress": ["stress_base", "stress_work_add", "stress_decay", "stress_neuro_sensitivity"],
+        "Health": ["health_floor", "health_decay_rate", "health_edu_protection"],
+        "Stress": ["stress_base", "stress_work_add", "stress_decay", "stress_neuro_sensitivity",
+                   "stress_pressure_gain", "income_baseline"],
         "Happiness": ["happiness_baseline", "happiness_health_weight", "happiness_income_weight", "happiness_edu_weight", "happiness_stress_penalty", "happiness_recovery"],
         "Noise": ["randomness"],
+        # 家庭支持政策的作用点：影响强度与收入支持对应具体政策工具
+        "Family Support": ["influence_strength", "income_support",
+                           "use_life_stage_susceptibility", "role_switch"],
     }
+    # 只暴露真实存在的参数：改名或删参数时不会静默漏项
+    groups = {name: [key for key in keys if key in DEFAULT_PARAMS] for name, keys in groups.items()}
+    unknown = [key for key in DEFAULT_PARAMS if not any(key in keys for keys in groups.values())]
+    if unknown:
+        groups["Other"] = unknown
     return JSONResponse({
         'defaults': DEFAULT_PARAMS,
         'groups': groups,

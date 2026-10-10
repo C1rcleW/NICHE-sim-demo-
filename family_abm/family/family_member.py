@@ -3,6 +3,7 @@ from typing import Any, Optional
 import math
 import random
 from ..core.agent import Agent
+from .influence import initial_influence_stock, susceptibility
 
 PERSONALITY_DIMENSIONS = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"]
 
@@ -36,6 +37,17 @@ DEFAULT_PARAMS: dict[str, float] = {
     "happiness_stress_penalty": 0.30,
     "happiness_recovery": 0.08,
     "randomness": 0.02,
+    # ── 家庭经济压力（0.2.0 新增）──────────────────────────────────────────
+    "stress_pressure_gain": 0.04,           # 家庭经济压力对成员压力的转换系数
+    "income_baseline": 0.25,                # 人均收入基准：低于此值产生经济压力
+    # ── 代际影响与政策杠杆（0.2.0 新增）────────────────────────────────────
+    # 这三个参数既是"机制开关"也是"政策杠杆"：仪表板可调，实验按情景设定。
+    # influence_strength 的量纲属模型参数（非实证标定），因此实验会对它做扫描，
+    # 报告结论随该取值的变化范围，而不是只报一个点估计。
+    "influence_strength": 1.0,              # 家庭影响强度（亲职支持政策的作用点）
+    "income_support": 0.0,                  # 家庭收入支持（儿童津贴类政策的作用点）
+    "use_life_stage_susceptibility": 1.0,   # 1 = 阶段易感性；0 = 恒定（消融对照）
+    "role_switch": 1.0,                     # 1 = 成年后转为施加影响；0 = 关闭（消融对照）
 }
 
 
@@ -87,6 +99,13 @@ class FamilyMember(Agent):
         self.set_state_value("energy", rng.uniform(0.6, 1.0))
         self.set_state_value("education", max(0.0, min(1.0, age * 0.012 + rng.gauss(0, 0.05))))
         self.set_state_value("income", 0.0)
+        # 代际影响相关状态：influence 为养育能力存量（成年人初始 0.80），
+        # susceptibility 为当前易感性，influence_received 由 Simulation 每步预计算。
+        self.set_state_value("influence", initial_influence_stock(age))
+        self.set_state_value("susceptibility", susceptibility(age))
+        # 家庭层面的经济压力（由 Household.step 写入；独立运行时保持 0）
+        self.set_state_value("economic_pressure", 0.0)
+        self.set_state_value("influence_received", 0.0)
 
     # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -106,6 +125,24 @@ class FamilyMember(Agent):
             env_params = getattr(self.environment, "params", None) or {}
             return float(env_params.get(key, DEFAULT_PARAMS.get(key, default)))
         return float(DEFAULT_PARAMS.get(key, default))
+
+    def _params_dict(self) -> dict[str, float]:
+        """完整参数字典（默认值 + 环境覆盖），供机制模块按需读取。"""
+        merged = dict(DEFAULT_PARAMS)
+        if self.environment is not None:
+            merged.update(getattr(self.environment, "params", None) or {})
+        return merged
+
+    def _household(self) -> Optional[Any]:
+        """返回自己所属的家庭智能体；不在任何家庭中时返回 None。"""
+        env = self.environment
+        if env is None:
+            return None
+        for agent in env.get_agents():
+            members = getattr(agent, "members", None)
+            if isinstance(members, dict) and self.id in members:
+                return agent
+        return None
 
     def _role_at_age(self, age: float) -> str:
         if age < 6:     return "preschool"
@@ -179,7 +216,14 @@ class FamilyMember(Agent):
         st_decay = self._p("stress_decay", 0.06)
         neuro = personality.get("neuroticism", 0.5)
         neuro_sens = self._p("stress_neuro_sensitivity", 0.30)
+        # 家庭经济压力：由 Household.step 写入。年幼成员对家庭处境更敏感
+        # （Family Stress Model 的核心预测），敏感度随年龄递减。
+        # 压力按"朝均衡点松弛"演化：添加项也要乘 decay 量级，否则每步累加会直接饱和。
+        pressure = float(self.get_state_value("economic_pressure", 0.0) or 0.0)
+        age_sensitivity = max(0.25, 1.0 - age / 40.0)
+        st_pressure = self._p("stress_pressure_gain", 0.04)
         st_change = (st_base + st_work) * (1 + neuro_sens * neuro) - st_decay * st
+        st_change += pressure * age_sensitivity * st_pressure
         st_change += rng(0, noise * 0.5) * (st + 0.1)
         self.set_state_value("stress", max(0.0, min(1.0, st + st_change)))
 
@@ -199,6 +243,15 @@ class FamilyMember(Agent):
         en = self.get_state_value("energy")
         en = en * 0.92 + 0.06 + rng(0, noise * 0.2)
         self.set_state_value("energy", max(0.0, min(1.0, en)))
+
+        # ── 代际影响（Friedkin–Johnsen 式：影响力 × 易感性）──
+        # 影响量由 Simulation._prepare_influence 在步进前按**步初状态**预计算，
+        # 因此这里只做应用，不重新计算 —— 否则会引入依赖调度顺序的"边更新边读"。
+        # 放在最后应用：作用在本步已更新的幸福状态上。
+        received = float(self.get_state_value("influence_received", 0.0) or 0.0)
+        if received:
+            ha = self.get_state_value("happiness") + received
+            self.set_state_value("happiness", max(0.0, min(1.0, ha)))
 
         # ── Age ──
         self.age_increment(years=dt_months / 12)

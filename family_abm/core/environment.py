@@ -12,7 +12,9 @@ class Environment:
     - ``params``：动力学参数（`FamilyMember._p()` 会读取，缺省时回退到 DEFAULT_PARAMS）
     - ``rng``：随机数发生器。默认是全局 ``random`` 模块；当由 :class:`Simulation`
       以 ``seed`` 创建时会换成独立实例，使仿真可复现且不影响进程内的其它随机数使用。
-      智能体与关系应通过 ``environment.rng`` 取随机数，而不是直接调用全局 ``random``。
+      智能体应通过 ``environment.rng`` 取随机数，而不是直接调用全局 ``random``。
+    - ``seed``：仿真种子。需要"按身份派生独立随机流"的组件（如 ``Relationship``）
+      用它获得确定性种子，从而摆脱对对象迭代顺序的依赖。
     """
 
     def __init__(self, width: int = 100, height: int = 100):
@@ -23,6 +25,7 @@ class Environment:
         self.properties: dict[str, Any] = {}
         self.params: dict[str, float] = {}
         self.rng: Any = random
+        self.seed: Optional[int] = None
 
     def add_agent(self, agent: Agent, x: Optional[float] = None, y: Optional[float] = None) -> None:
         self.agents[agent.id] = agent

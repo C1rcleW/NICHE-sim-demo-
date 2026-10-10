@@ -47,18 +47,34 @@ class Household(Agent):
     def add_member(self, member: FamilyMember, relation_to_head: str = "member") -> None:
         self.members[member.id] = member
         rng = self._rng()
+        seed = getattr(self.environment, "seed", None) if self.environment is not None else None
         for existing_id in self.members:
             if existing_id != member.id:
+                # 关系身份用**家庭名 + 成员在家庭中的加入序号**，而不是 uuid：
+                # uuid 每次运行都不同，会让按 id 排序的关系顺序变化，
+                # 进而导致同一 seed 下关系状态不可复现。
                 rel = Relationship(
                     agent_a_id=member.id,
                     agent_b_id=existing_id,
                     relation_type=relation_to_head,
                     rng=rng,
+                    seed=seed,
+                    identity=(self._member_label(member), self._member_label(existing_id)),
                 )
                 self.relationships[(member.id, existing_id)] = rel
                 self.relationships[(existing_id, member.id)] = rel
         if self.environment is not None:
             self.environment.add_agent(member)
+
+    def _member_label(self, member_id: str) -> str:
+        """成员的稳定标签：家庭名 + 加入序号（与 uuid 无关）。"""
+        order = list(self.members).index(member_id) if member_id in self.members else -1
+        name = getattr(self, "name", "") or getattr(self, "attributes", {}).get("name", "")
+        return f"{name}#{order}"
+
+    @property
+    def name(self) -> str:
+        return str(self.get_attribute("name") or "")
 
     def remove_member(self, member_id: str) -> None:
         if member_id in self.members:
@@ -93,15 +109,37 @@ class Household(Agent):
             seen.setdefault((rel.agent_a_id, rel.agent_b_id), rel)
         return [seen[key] for key in sorted(seen)]
 
+    def _p(self, key: str, default: float = 0.0) -> float:
+        """读取环境参数（家庭层与成员层共用同一套参数）。"""
+        env = self.environment
+        env_params = getattr(env, "params", None) if env is not None else None
+        from .family_member import DEFAULT_PARAMS
+
+        return float((env_params or {}).get(key, DEFAULT_PARAMS.get(key, default)))
+
     def step(self) -> None:
         for rel in self._unique_relationships():
             rel.update_dynamics()
 
+        # 政策杠杆：收入支持直接提高家庭可支配收入（例如儿童津贴），
+        # 而不是抬高"够用"的门槛——后者会让支持越多、测得的压力越大。
+        support = self._p("income_support", 0.0)
         total_income = sum(
-            m.get_state_value("income", 0.0)
+            (m.get_state_value("income", 0.0) or 0.0)
             for m in self.members.values()
-        )
+        ) * (1.0 + support)
         self.set_state_value("total_income", total_income)
+
+        # ── 家庭经济压力 ──
+        # 此前 total_income 只写不读：家庭算出了聚合量却无人消费，使"家庭"在
+        # 动力学上等同于一个命名空间。这里把它变成共同压力源：人均收入低于
+        # 基准时产生压力，由成员各自读取（Family Stress Model 的入口）。
+        baseline = self._p("income_baseline", 0.08)
+        perceived = total_income / max(1, len(self.members))
+        pressure = 0.0 if baseline <= 0 else max(0.0, (baseline - perceived) / baseline)
+        self.set_state_value("economic_pressure", pressure)
+        for member in self.members.values():
+            member.set_state_value("economic_pressure", pressure)
 
     def get_state(self) -> dict[str, Any]:
         return {

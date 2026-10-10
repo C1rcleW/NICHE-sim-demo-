@@ -1,0 +1,264 @@
+{
+  "steps": 240,
+  "seed": 42,
+  "conditions": {
+    "C0": {
+      "label": "无影响（基线）",
+      "params": {
+        "influence_strength": 0.0
+      },
+      "deviation": {
+        "mean_abs": 0.0,
+        "max_abs": 0.0,
+        "normalized": 0.0
+      },
+      "influence": {
+        "overall": {
+          "mean_openness": 0.26937500000000003,
+          "std_openness": 0.21418806982490676,
+          "mean_received": 0.0
+        },
+        "window_a": {
+          "mean_openness": 0.269375,
+          "std_openness": 0.2142720614015324,
+          "mean_received": 0.0
+        },
+        "window_b": {
+          "mean_openness": 0.26937500000000003,
+          "std_openness": 0.21422551593309977,
+          "mean_received": 0.0
+        }
+      },
+      "reducibility": {
+        "full": {
+          "r_squared": 0.765218,
+          "converged": true,
+          "n": 241
+        },
+        "stages": {
+          "A 青春期(12-20岁)": {
+            "r_squared": 0.904679,
+            "converged": true,
+            "n": 96
+          },
+          "B 成年后(20-32岁)": {
+            "r_squared": 0.655049,
+            "converged": true,
+            "n": 144
+          }
+        }
+      },
+      "dispersion": [
+        {
+          "state": "state_happiness",
+          "first": 0.16533437442389107,
+          "last": 0.09894130449381246,
+          "slope": -0.0002017223783901742,
+          "direction": "converging"
+        },
+        {
+          "state": "state_stress",
+          "first": 0.354014721644688,
+          "last": 0.10003130398484648,
+          "slope": -0.0005650150112821056,
+          "direction": "converging"
+        }
+      ]
+    },
+    "C1": {
+      "label": "影响恒定",
+      "params": {
+        "influence_strength": 4.0,
+        "use_life_stage_susceptibility": 0.0,
+        "role_switch": 0.0
+      },
+      "deviation": {
+        "mean_abs": 0.02591385571763652,
+        "max_abs": 0.07617211065535767,
+        "normalized": 0.05889038455577505
+      },
+      "influence": {
+        "overall": {
+          "mean_openness": 0.4990430497925311,
+          "std_openness": 0.0202547274443255,
+          "mean_received": 0.0057470787910074705
+        },
+        "window_a": {
+          "mean_openness": 0.49759765624999996,
+          "std_openness": 0.03205057679648353,
+          "mean_received": 0.00638030637252221
+        },
+        "window_b": {
+          "mean_openness": 0.5,
+          "std_openness": 0.0,
+          "mean_received": 0.005327406901585555
+        }
+      },
+      "reducibility": {
+        "full": {
+          "r_squared": 0.67407,
+          "converged": true,
+          "n": 241
+        },
+        "stages": {
+          "A 青春期(12-20岁)": {
+            "r_squared": 0.92692,
+            "converged": true,
+            "n": 96
+          },
+          "B 成年后(20-32岁)": {
+            "r_squared": 0.723762,
+            "converged": true,
+            "n": 144
+          }
+        }
+      },
+      "dispersion": [
+        {
+          "state": "state_happiness",
+          "first": 0.16533437442389107,
+          "last": 0.03287947393002923,
+          "slope": 3.2552806384151845e-05,
+          "direction": "diverging"
+        },
+        {
+          "state": "state_stress",
+          "first": 0.354014721644688,
+          "last": 0.10003130398484648,
+          "slope": -0.0005650150112821056,
+          "direction": "converging"
+        }
+      ]
+    },
+    "C2": {
+      "label": "阶段易感性",
+      "params": {
+        "influence_strength": 4.0,
+        "use_life_stage_susceptibility": 1.0,
+        "role_switch": 0.0
+      },
+      "deviation": {
+        "mean_abs": 0.020453971359698956,
+        "max_abs": 0.05283467616255766,
+        "normalized": 0.04648255559459992
+      },
+      "influence": {
+        "overall": {
+          "mean_openness": 0.15804330912863063,
+          "std_openness": 0.11211801926451459,
+          "mean_received": 0.0032377011825489377
+        },
+        "window_a": {
+          "mean_openness": 0.20386501736111096,
+          "std_openness": 0.15675495870157105,
+          "mean_received": 0.004174471149422024
+        },
+        "window_b": {
+          "mean_openness": 0.12776837384259254,
+          "std_openness": 0.04835251898573576,
+          "mean_received": 0.0026177584758061614
+        }
+      },
+      "reducibility": {
+        "full": {
+          "r_squared": 0.377988,
+          "converged": true,
+          "n": 241
+        },
+        "stages": {
+          "A 青春期(12-20岁)": {
+            "r_squared": 0.94398,
+            "converged": true,
+            "n": 96
+          },
+          "B 成年后(20-32岁)": {
+            "r_squared": 0.748496,
+            "converged": true,
+            "n": 144
+          }
+        }
+      },
+      "dispersion": [
+        {
+          "state": "state_happiness",
+          "first": 0.16533437442389107,
+          "last": 0.05512473503692921,
+          "slope": 6.421351651064937e-05,
+          "direction": "diverging"
+        },
+        {
+          "state": "state_stress",
+          "first": 0.354014721644688,
+          "last": 0.10003130398484648,
+          "slope": -0.0005650150112821056,
+          "direction": "converging"
+        }
+      ]
+    },
+    "C3": {
+      "label": "阶段易感性 + 角色切换",
+      "params": {
+        "influence_strength": 4.0,
+        "use_life_stage_susceptibility": 1.0,
+        "role_switch": 1.0
+      },
+      "deviation": {
+        "mean_abs": 0.017046235927424297,
+        "max_abs": 0.04640837903675471,
+        "normalized": 0.03873832593392408
+      },
+      "influence": {
+        "overall": {
+          "mean_openness": 0.18524766597510364,
+          "std_openness": 0.10816293367086983,
+          "mean_received": 0.0026498857514378137
+        },
+        "window_a": {
+          "mean_openness": 0.21591796875,
+          "std_openness": 0.151269037200992,
+          "mean_received": 0.005240190184130366
+        },
+        "window_b": {
+          "mean_openness": 0.16497070312499987,
+          "std_openness": 0.0572556096612771,
+          "mean_received": 0.0009414181140277636
+        }
+      },
+      "reducibility": {
+        "full": {
+          "r_squared": 0.895064,
+          "converged": true,
+          "n": 241
+        },
+        "stages": {
+          "A 青春期(12-20岁)": {
+            "r_squared": 0.658535,
+            "converged": true,
+            "n": 96
+          },
+          "B 成年后(20-32岁)": {
+            "r_squared": 0.077843,
+            "converged": true,
+            "n": 144
+          }
+        }
+      },
+      "dispersion": [
+        {
+          "state": "state_happiness",
+          "first": 0.16533437442389107,
+          "last": 0.098907081121212,
+          "slope": 0.00021983339948946056,
+          "direction": "diverging"
+        },
+        {
+          "state": "state_stress",
+          "first": 0.354014721644688,
+          "last": 0.10003130398484648,
+          "slope": -0.0005650150112821056,
+          "direction": "converging"
+        }
+      ]
+    }
+  }
+}
