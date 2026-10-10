@@ -133,4 +133,14 @@ jobs:
       - name: 附到 GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+        run: |
+          # gh release upload 在 Release 不存在时会失败，因此先确保它存在。
+          # 用 --generate-notes 自动生成说明：仓库所有者可在 GitHub 上编辑改写，
+          # 既让流程无人值守可用，也不妨碍人工润色发布说明。
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME 已存在，改为追加产物"
+          else
+            echo "Release $GITHUB_REF_NAME 不存在，创建并自动生成说明"
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
