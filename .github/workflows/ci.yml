@@ -119,17 +119,23 @@ jobs:
           python -m build
       - name: 校验产物版本号与 tag 一致
         # tag 是 v0.1.0 而产物是 family_abm-0.2.0 这类不一致必须挡在这里，
-        # 否则会把版本号错误的产物发出去
+        # 否则会把版本号错误的产物发出去。
+        #
+        # 注意要去掉预发布后缀：PEP 440 允许 v0.2.0-rc.1 这样的 tag，
+        # 而构建产物名是 family_abm-0.2.0-rc.1...，其"版本部分"是 0.2.0。
+        # 若直接用完整 tag 匹配，预发布版本永远无法发布。
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION%%-*}"
+          echo "tag=${GITHUB_REF_NAME}  比对版本=${VERSION}"
           ls dist/
           for f in dist/*; do
             case "$(basename "$f")" in
-              *"$TAG"*) ;;
-              *) echo "产物 $f 的版本号与 tag $GITHUB_REF_NAME 不一致"; exit 1 ;;
+              *"$VERSION"*) ;;
+              *) echo "产物 $f 的版本号与 ${VERSION} 不一致"; exit 1 ;;
             esac
           done
-          echo "版本号校验通过：$TAG"
+          echo "版本号校验通过：${VERSION}"
       - name: 附到 GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -137,10 +143,15 @@ jobs:
           # gh release upload 在 Release 不存在时会失败，因此先确保它存在。
           # 用 --generate-notes 自动生成说明：仓库所有者可在 GitHub 上编辑改写，
           # 既让流程无人值守可用，也不妨碍人工润色发布说明。
+          # 带预发布后缀的 tag（如 v0.2.0-rc.1）自动标记为 pre-release。
+          EXTRA=""
+          case "$GITHUB_REF_NAME" in *-*) EXTRA="--prerelease" ;; esac
+
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "Release $GITHUB_REF_NAME 已存在，改为追加产物"
           else
-            echo "Release $GITHUB_REF_NAME 不存在，创建并自动生成说明"
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+            echo "Release $GITHUB_REF_NAME 不存在，创建并自动生成说明 ${EXTRA}"
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" \
+              --generate-notes $EXTRA
           fi
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
