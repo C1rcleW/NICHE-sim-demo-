@@ -39,7 +39,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -96,6 +95,16 @@ STAGE_WINDOWS = [
 ]
 
 STATE_COLUMNS = ["state_happiness", "state_stress"]
+
+# 图表英文标签（图会被单独放进幻灯片，避免字体依赖）
+EN_LABELS: dict[str, str] = {
+    "A 青春期(12-20岁)": "A adolescence\n(12-20y)",
+    "B 成年后(20-32岁)": "B adulthood\n(20-32y)",
+    "无影响（基线）": "no influence\n(baseline)",
+    "影响恒定": "constant\ninfluence",
+    "阶段易感性": "stage\nsusceptibility",
+    "阶段易感性 + 角色切换": "stage +\nrole switch",
+}
 
 
 # ── 仿真 ────────────────────────────────────────────────────────────────────
@@ -309,22 +318,29 @@ def _fmt(value) -> str:
 
 
 def _plot(results: dict, path: Path) -> None:
-    """三张图：轨迹偏离、易感性变化、全窗口 vs 分段 R²。"""
+    """三张图：轨迹偏离、易感性的时间变异、分段 R²。
+
+    图表标签一律用英文：中文字形依赖系统字体（DejaVu Sans 无 CJK 字形，
+    中文会渲染成方块），而实验图常被单独取出放进幻灯片，不应带上字体依赖。
+    中文说明见 README。
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     keys = list(results["conditions"])
-    labels = [f"{key}\n{results['conditions'][key]['label']}" for key in keys]
+    labels = [f"{key}\n{EN_LABELS.get(results['conditions'][key]['label'], results['conditions'][key]['label'])}"
+              for key in keys]
 
     fig, axes = plt.subplots(1, 3, figsize=(17, 5))
 
     axes[0].bar(labels, [results["conditions"][k]["deviation"]["mean_abs"] for k in keys],
                 color="#4c72b0")
-    axes[0].set_title("聚合轨迹相对基线的偏离")
-    axes[0].set_ylabel("平均绝对偏离")
+    axes[0].set_title("Aggregate trajectory deviation (vs C0)")
+    axes[0].set_ylabel("Mean absolute deviation")
 
-    windows = [lab for lab, _, _ in STAGE_WINDOWS if lab in results["conditions"][keys[0]]["reducibility"]["stages"]]
+    windows = [lab for lab, _, _ in STAGE_WINDOWS
+               if lab in results["conditions"][keys[0]]["reducibility"]["stages"]]
     width = 0.8 / max(1, len(keys))
     positions = np.arange(len(windows))
     for index, key in enumerate(keys):
@@ -332,16 +348,16 @@ def _plot(results: dict, path: Path) -> None:
                   for lab in windows]
         axes[1].bar(positions + index * width, values, width, label=key)
     axes[1].set_xticks(positions + 0.4 - width / 2)
-    axes[1].set_xticklabels([lab[:6] for lab in windows])
-    axes[1].set_title("分段常系数 ODE 拟合优度")
+    axes[1].set_xticklabels([EN_LABELS.get(lab, lab) for lab in windows], rotation=10)
+    axes[1].set_title("Constant-coefficient ODE fit per life stage")
     axes[1].set_ylabel("R²")
     axes[1].set_ylim(0, 1)
     axes[1].legend(fontsize=8)
 
     axes[2].bar(labels, [results["conditions"][k]["influence"]["overall"]["std_openness"] for k in keys],
                 color="#dd8452")
-    axes[2].set_title("易感性的时间变异（系数是否恒定）")
-    axes[2].set_ylabel("易感性标准差")
+    axes[2].set_title("Temporal variation of susceptibility")
+    axes[2].set_ylabel("Susceptibility std")
 
     fig.tight_layout()
     fig.savefig(path, dpi=130)
