@@ -103,21 +103,45 @@ def test_http_smoke_dependency_is_declared_as_dev_extra() -> None:
 
 
 def test_requirements_matches_pyproject() -> None:
-    """requirements.txt 与 pyproject 的依赖清单不得分歧（单一真源）。"""
+    """requirements.txt 必须与 pyproject.toml 的依赖清单一致（单一真源）。
+
+    pyproject.toml 是唯一真源；requirements.txt 是它的镜像（便于 `pip install -r`
+    与 GitHub 上的纯文本展示），由 `tools/sync_requirements.py` 机械生成。
+
+    契约：runtime 依赖必须完全一致；镜像允许额外列出 pyproject 中**已声明**的
+    optional-dependencies（[dev] / [viz]），但不允许出现未声明的包。
+    """
     data = _load_pyproject()
-    pyproject_deps = {d.split(">=")[0].strip().lower(): d.strip() for d in data["project"]["dependencies"]}
+    pyproject_runtime = {
+        dep.split(">=")[0].strip().lower(): dep.strip()
+        for dep in data["project"]["dependencies"]
+    }
+    extras = {
+        dep.split(">=")[0].strip().lower(): dep.strip()
+        for deps in data["project"].get("optional-dependencies", {}).values()
+        for dep in deps
+    }
+    declared = {**pyproject_runtime, **extras}
+
     lines = [
         line.strip()
         for line in (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
     req_deps = {d.split(">=")[0].strip().lower(): d for d in lines}
-    assert set(pyproject_deps) == set(req_deps), (
-        f"依赖清单分歧：仅 pyproject 有 {sorted(set(pyproject_deps) - set(req_deps))}，"
-        f"仅 requirements 有 {sorted(set(req_deps) - set(pyproject_deps))}"
-    )
-    for name, spec in pyproject_deps.items():
-        assert req_deps[name] == spec, f"{name} 版本不一致：pyproject={spec!r} requirements={req_deps[name]!r}"
+
+    # runtime 必须完全一致
+    missing = set(pyproject_runtime) - set(req_deps)
+    assert not missing, f"requirements.txt 缺少运行时依赖：{sorted(missing)}"
+    # 镜像不得出现 pyproject 未声明的包
+    undeclared = set(req_deps) - set(declared)
+    assert not undeclared, f"requirements.txt 含 pyproject 未声明的依赖：{sorted(undeclared)}"
+    # 同名依赖的版本约束必须一致
+    for name, spec in declared.items():
+        if name in req_deps:
+            assert req_deps[name] == spec, (
+                f"{name} 版本不一致：pyproject={spec!r} requirements={req_deps[name]!r}"
+            )
 
 
 def test_package_discovery_excludes_tests_and_tools() -> None:

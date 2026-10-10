@@ -156,7 +156,7 @@ def source_weight(member: Any, source: Any, household: Any) -> float:
     relationship = household.get_relationship(source.id, member.id)
     if relationship is None:
         return 0.0
-    if not getattr(relationship, "relation_type", "") in INFLUENCE_RELATION_TYPES:
+    if getattr(relationship, "relation_type", "") not in INFLUENCE_RELATION_TYPES:
         return 0.0
     base = relationship.influence_weight(source.id)
     # 关系中的冲突削弱影响

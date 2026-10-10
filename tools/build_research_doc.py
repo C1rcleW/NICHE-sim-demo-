@@ -516,7 +516,7 @@ def build() -> Document:
         "python experiments/mechanism_validation.py     # 四项机制检验（E1–E4）",
         "python experiments/sensitivity_analysis.py     # 参数敏感性分析",
         "python experiments/life_stage_reducibility.py  # 可约性实验（否定结果）",
-        "python -m pytest tests/                        # 106 项自动化检验",
+        "python -m pytest tests/                        # 全部自动化检验",
     ]:
         paragraph = document.add_paragraph(style="No Spacing")
         _write_rich(paragraph, command, mono=True)
@@ -528,7 +528,7 @@ def build() -> Document:
          '但决定了结论是否可被他人复核。')
     table(document,
           ["项目", "状态"],
-          [["自动化检验", "106 项通过（机制、可复现性、数据契约、打包、文档一致性）"],
+          [["自动化检验", "全部通过（机制、可复现性、数据契约、打包、文档一致性）"],
            ["可复现性", "同一随机种子跨进程结果逐点一致；默认参数固定，无需手动播种"],
            ["基线快照", "默认配置的行为已固化，任何改动会显式暴露"],
            ["代码检查", "静态检查通过"],

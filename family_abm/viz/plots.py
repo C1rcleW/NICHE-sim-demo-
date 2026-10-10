@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Any, Optional
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -8,11 +7,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.gridspec import GridSpec
 
-from ..core.environment import Environment
 from ..niche.micro_niche import MicroNiche
-from ..fitting.lanchester import solve_model
 
 
 # ── Global style ────────────────────────────────────────────────────────────
@@ -230,9 +226,9 @@ def plot_family_network(
 
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors,
                            node_size=800, edgecolors="white", linewidths=1.5)
-    ec = nx.draw_networkx_edges(G, pos, ax=ax, width=edge_widths,
-                                edge_color=edge_colors, edge_cmap=plt.cm.RdYlGn_r,
-                                edge_vmin=0, edge_vmax=1, alpha=0.7)
+    nx.draw_networkx_edges(G, pos, ax=ax, width=edge_widths,
+                           edge_color=edge_colors, edge_cmap=plt.cm.RdYlGn_r,
+                           edge_vmin=0, edge_vmax=1, alpha=0.7)
 
     nx.draw_networkx_labels(G, pos, ax=ax,
                             labels={n: G.nodes[n].get("name", n[:8]) for n in G.nodes()},
@@ -266,8 +262,6 @@ def plot_fit_diagnostics(
     figsize: tuple[float, float] = (12, 4),
     save_path: Optional[str] = None,
 ) -> plt.Figure:
-    import matplotlib.gridspec as gridspec
-    from ..fitting.fitter import ABMFitter
 
     state_names = state_names or fitter.state_names
     n_states = len(state_names)

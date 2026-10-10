@@ -1,17 +1,29 @@
 # Family ABM — 家庭社会小生境智能体建模框架
 
-一个模块化、可复用的**智能体建模（Agent-Based Model）框架**，用于模拟家庭社会小生境（Social Micro-Niches）。集成兰彻斯特型 ODE 拟合、交互式 Web 仪表板，面向计算社会学与交叉科学研究。
+[![CI](https://github.com/C1rcleW/NICHE-sim-demo-/actions/workflows/ci.yml/badge.svg)](https://github.com/C1rcleW/NICHE-sim-demo-/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Code style](https://img.shields.io/badge/lint-ruff-000000)](https://github.com/astral-sh/ruff)
+
+一个模块化、可复用的**智能体建模（Agent-Based Model）框架**，用于模拟家庭社会小生境（Social Micro-Niches）。集成代际影响机制、兰彻斯特型 ODE 拟合、交互式 Web 仪表板，面向计算社会学与交叉科学研究。
+
+**研究问题**：家庭内部的代际影响强度随子代发展阶段系统性下降。这种变化如何影响子代的长期结果？含有时变影响系数的家庭动力学，能否被低维方程刻画？
+
+> 完整的研究设计（理论框架、四项可证伪检验、敏感性分析、政策意涵）见
+> [`docs/研究设计文档.docx`](docs/)。README 讲**怎么用**，设计文档讲**研究什么**。
 
 ---
 
 ## 核心功能
 
+- **代际影响机制** — 影响量 = 影响强度 × 易感性(年龄) × Σ(关系权重 × 来源养育能力 × 来源健康) × 状态差距；易感性随埃里克森阶段阶梯下降，子代成年后转为施加影响一方
 - **多层次仿真** — 家庭包含多个成员智能体，每人拥有独立的人格、年龄轨迹、教育、收入、健康、情绪状态
 - **交互式仪表板** — FastAPI + Plotly.js，内置中英文双语，在浏览器中完成仿真配置、运行、拟合、可视化全流程
 - **ODE 拟合** — 7 种内置兰彻斯特型社会动力学模型（竞争、影响、幸福-压力平衡等），支持多起点鲁棒优化和差分进化全局搜索
+- **可复现** — 注入随机种子后，同一 seed 跨进程、跨机器结果逐点一致
 - **机器学习接口** — 状态记录 → DataFrame → 特征提取，输出可直接对接 sklearn / PyTorch 工作流
 - **小生境模型** — 将智能体映射到四维社会空间（经济 / 文化 / 社会 / 情感），计算生境距离与重叠度
-- **参数可调** — 27 个动力学参数（学习速率、收入曲线、压力敏感度等）在仪表板中配置
+- **参数可调** — 27 个动力学参数（含两个政策杠杆）在仪表板中配置
 
 ---
 
@@ -34,6 +46,56 @@ python examples/fitting_viz_demo.py     # 拟合 + 可视化
 
 ---
 
+## 实验结果
+
+四项机制检验与一轮参数敏感性分析的完整结果见
+[`experiments/results/`](experiments/results/)。参数含义与检验设计见设计文档。
+
+**机制验证**（`experiments/mechanism_validation.py`）
+
+![机制验证](experiments/results/mechanism_validation.png)
+
+- **E1** 易感性阶段结构：单调性违例 0 次，阶段边界跳变 2.5×10⁻⁵（连续）
+- **E2** 效力随阶段单调递减：1.128 → 0.833 → 0.026 → 0.017（学前期 → 成年早期）
+- **E3** 剂量-反应单调（信噪比 3.7–4.8）；可信强度上限为 4，超过后状态触界使结论失效
+- **E4** 早期影响在成年后仍可分辨（信噪比 3.53），但衰减到童年期的 6.7%
+
+**敏感性分析**（`experiments/sensitivity_analysis.py`）
+
+![敏感性分析](experiments/results/sensitivity_analysis.png)
+
+五条结论在 **25–75 个参数组合下全部成立**。扰动参数不改变定性结论，
+只改变适用边界的数值位置（可信强度上限在 2.0–8.0 之间移动）。
+
+**一个否定的结果**（`experiments/life_stage_reducibility.py`）
+常系数 ODE 无法刻画家庭聚合动力学：拟合工具本身没问题（对自生成数据 R²=1.00000），
+但对 ABM 数据只有 0.38–0.90，差距来自模型结构与动力学的错配而非机制效应。
+
+---
+
+## 项目结构
+
+```
+family_abm/
+├── core/            # 框架核心：Agent / Environment / Scheduler / Simulation
+├── family/          # 家庭层：成员、家庭、关系、角色、代际影响机制
+├── niche/           # 小生境：四维社会空间、资源
+├── fitting/         # 兰彻斯特型 ODE 模型与拟合器
+├── ml/              # 状态记录与特征提取
+├── viz/             # matplotlib 可视化
+└── web/             # FastAPI 后端 + 前端资源（模板 / CSS / JS）
+
+experiments/         # 研究实验脚本与结果（JSON + PNG）
+tests/               # 自动化检验（机制、可复现性、数据契约、打包、文档一致性）
+tools/               # 基线快照、安装验证、前端行为检查、文档生成
+docs/                # 研究设计文档
+baseline/            # 默认配置的行为快照（改动会显式暴露）
+audits/              # 历史审查报告（过程记录，非研究成果）
+examples/            # 可直接运行的示例脚本
+```
+
+---
+
 ## 使用指南
 
 ### Web 仪表板
@@ -52,7 +114,14 @@ python -m family_abm.web
 
 右上角 ⚙ 按钮切换 **English / 简体中文**
 
-<img width="2531" height="1264" alt="image" src="https://github.com/user-attachments/assets/d9c9b193-79bd-4528-a2a1-df1b5b90dbc5" />
+<!--
+仪表板截图：把图片放到 docs/screenshots/dashboard.png 后，
+取消下面一行的注释即可在 README 中显示。
+（原先引用的是 GitHub 附件链接，其有效性无法在仓库内验证，
+ 因此改为本地路径，避免出现失效图片。）
+
+![仪表板](docs/screenshots/dashboard.png)
+-->
 
 拟合页的几点说明：
 
@@ -270,10 +339,50 @@ hh.add_member(FamilyMember(name="Father", age=40, environment=env))
   顺序），但在成员 `step()` 中按调度顺序累加，故"同一步内谁先被更新"仍会带来微小差异。
 - **健康模型是渐近型**：健康朝下限（`health_floor`，默认 0.35）指数渐近并受年龄加速，
   因此不会像早期版本那样在十多年内衰减到 0.01，但这是一个建模选择，尚无实证标定。
-- 仓库暂未附带 LICENSE 文件，使用前请与作者确认授权。
+
+---
+
+## 开发
+
+```bash
+pip install -e ".[dev]"          # 可编辑安装 + 测试依赖
+
+python -m pytest tests/ -q       # 全部测试
+ruff check family_abm tests tools experiments   # 静态检查
+node tools/check_dashboard_behavior.js          # 前端行为检查（需 Node）
+
+# 重新生成基线快照（会显式暴露行为变化，改动模型后需要人工确认差异）
+python tools/baseline.py --out baseline/default_seed42.json
+
+# 重新生成研究设计文档
+python tools/build_research_doc.py
+```
+
+CI 在 Python 3.9 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试，
+并额外做一次"构建 wheel → 干净环境安装 → 冒烟验证"。
+
+**改动的两条约定**：
+1. 任何影响默认行为的改动都要重跑 `tools/baseline.py --check`，并在提交信息里说明差异。
+2. 新增机制请附可证伪的检验（参照 `experiments/mechanism_validation.py` 的形式）。
 
 ---
 
 ## 引用
 
 如在研究中使用本框架，欢迎联系作者交流。
+
+```bibtex
+@software{family_abm,
+  title  = {Family ABM: 家庭社会小生境智能体建模框架},
+  author = {C1rcleW},
+  year   = {2026},
+  url    = {https://github.com/C1rcleW/NICHE-sim-demo-},
+  note   = {Version 0.2.0}
+}
+```
+
+---
+
+## 许可
+
+本项目采用 [MIT License](LICENSE)。

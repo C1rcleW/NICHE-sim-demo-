@@ -10,11 +10,15 @@ readme = "README.md"
 requires-python = ">=3.9"
 authors = [{ name = "C1rcleW" }]
 keywords = ["agent-based-model", "computational-social-science", "social-niche", "ode", "simulation"]
-# 注意：本仓库当前没有 LICENSE 文件，因此不在此声明 license 字段
-# （避免元数据声称 MIT 而仓库实际无授权文件）。
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    # 注意：不使用 "License :: OSI Approved :: ..." 分类器。
+    # 上面已用 SPDX 表达式 license = "MIT" 声明授权；两者同时出现会被 setuptools
+    # 拒绝（License classifiers have been superseded by license expressions）。
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -44,11 +48,30 @@ dependencies = [
 [project.optional-dependencies]
 # httpx 是 fastapi.testclient 的必需依赖，tools/verify_install.py 的 HTTP 端到端
 # 依赖它，因此必须出现在 dev extra 中，否则按声明安装也会让冒烟退化为跳过。
-dev = ["pytest>=7.0", "build>=0.10", "httpx>=0.24"]
+# python-docx 供 tools/build_research_doc.py 与 export_research_md.py 使用。
+dev = ["pytest>=7.0", "build>=0.10", "httpx>=0.24", "python-docx>=1.0"]
 viz = ["networkx>=2.6"]
 
 [project.urls]
 Repository = "https://github.com/C1rcleW/NICHE-sim-demo-"
+Issues = "https://github.com/C1rcleW/NICHE-sim-demo-/issues"
+
+# ── 工具配置 ────────────────────────────────────────────────────────────────
+
+# 忽略规则说明：
+#   E501  行长度由人类判断，中文注释按字符数计长会误报
+#   E701  个别紧凑的单行分支（if x: return y）可读性更好
+[tool.ruff]
+target-version = "py39"
+line-length = 110
+
+[tool.ruff.lint]
+ignore = ["E501", "E701"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# 测试会构建 wheel 并安装到临时环境，默认超时不够时按需调大
+addopts = "-q"
 
 # 显式列出包，避免把 tests/ 与 tools/ 一并装进 wheel
 [tool.setuptools]
