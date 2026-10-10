@@ -378,7 +378,7 @@ CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试
   author = {C1rcleW},
   year   = {2026},
   url    = {https://github.com/C1rcleW/NICHE-sim-demo-},
-  note   = {Version 0.2.0}
+  note   = {Version 0.1.0}
 }
 ```
 
@@ -387,3 +387,12 @@ CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试
 ## 许可
 
 本项目采用 [MIT License](LICENSE)。
+
+---
+
+## 版本
+
+当前版本 **0.1.0**（首个公开版本）。变更历史见 [CHANGELOG.md](CHANGELOG.md)，
+发布产物见 [Releases](https://github.com/C1rcleW/NICHE-sim-demo-/releases)。
+
+`0.x` 阶段的 API 尚未稳定，次版本号可能包含不兼容改动。

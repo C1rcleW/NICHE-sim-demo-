@@ -4,15 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "family_abm"
-version = "0.2.0"
-description = "Family social micro-niche agent-based modeling framework with Lanchester-type ODE fitting and a FastAPI dashboard"
+version = "0.1.0"
+description = "Family social micro-niche agent-based modeling framework with intergenerational influence dynamics, Erikson-stage susceptibility, Lanchester-type ODE fitting and a FastAPI dashboard"
 readme = "README.md"
 # 最低 3.10：Pydantic 在**类创建时**求值注解（不像普通注解那样被
 # `from __future__ import annotations` 延迟），因此 `int | None` 这类写法
 # 需要运行时的 `|` 支持。Python 3.9 已于 2025-10 终止支持，不再兼容。
 requires-python = ">=3.10"
 authors = [{ name = "C1rcleW" }]
-keywords = ["agent-based-model", "computational-social-science", "social-niche", "ode", "simulation"]
+keywords = [
+    "agent-based-model",
+    "computational-social-science",
+    "social-niche",
+    "intergenerational-transmission",
+    "life-course",
+    "erikson",
+    "family-stress-model",
+    "ode",
+    "lanchester",
+    "simulation",
+    "social-policy",
+]
 license = "MIT"
 license-files = ["LICENSE"]
 classifiers = [

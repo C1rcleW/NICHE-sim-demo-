@@ -148,7 +148,7 @@ def build() -> Document:
 
     meta = document.add_paragraph()
     meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = meta.add_run("NICHE-sim 项目 · 研究设计文档 v1.0")
+    run = meta.add_run("NICHE-sim 项目 · 研究设计文档 v1.0 · 对应软件版本 v0.1.0")
     run.font.color.rgb = RGBColor(0x60, 0x60, 0x60)
     _set_run_font(run, size=10)
 
