@@ -169,7 +169,7 @@ def test_neuroticism_is_effective_across_full_range() -> None:
         hh.add_member(FamilyMember(name="X", age=40, role_name="parent",
                                    personality=personality, environment=env))
         sim.run(300)
-        means.append(hh.members[list(hh.members)[0]].get_state_value("stress"))
+        means.append(hh.members[next(iter(hh.members))].get_state_value("stress"))
 
     assert means == sorted(means), f"稳态压力未随神经质单调增加：{means}"
     assert means[-1] - means[0] > 0.02, f"神经质的影响过小，几乎不可分辨：{means}"

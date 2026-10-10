@@ -31,7 +31,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder  # noqa: E402
+from family_abm import (  # noqa: E402
+    Environment,
+    FamilyMember,
+    Household,
+    Scheduler,
+    Simulation,
+    StateRecorder,
+)
 from family_abm.family.influence import ADULTHOOD_AGE, ERIKSON_STAGES, susceptibility  # noqa: E402
 
 # ── 配置 ────────────────────────────────────────────────────────────────────
@@ -82,7 +89,7 @@ def build_env(seed: int, params: dict):
 
 
 def run_once(seed: int, params: dict, steps: int = STEPS):
-    env, sim, household = build_env(seed, params)
+    _env, sim, _household = build_env(seed, params)
     recorder = StateRecorder(record_agents=True)
     sim.add_recorder(recorder)
     sim.run(steps)
@@ -216,7 +223,7 @@ def e2_stage_profile(seeds: list[int], strength: float, extra_params: dict | Non
     openness = stack_mean(staged["child_susceptibility"])
 
     per_stage = []
-    for start, end, expected, source, label in ERIKSON_STAGES:
+    for start, end, _expected, _source, label in ERIKSON_STAGES:
         mask = (ages >= start) & (ages < end)
         if not np.any(mask):
             continue
@@ -517,7 +524,7 @@ def _plot(report: dict, path: Path) -> None:
     ages = [p["age"] for p in curve]
     values = [p["susceptibility"] for p in curve]
     axes[0].plot(ages, values, linewidth=2)
-    for start, _end, _v, _s, label in ERIKSON_STAGES:
+    for start, _end, _v, _s, _label in ERIKSON_STAGES:
         if start <= max(ages):
             axes[0].axvline(start, color="grey", linestyle=":", linewidth=0.8)
     axes[0].set_title("E1  Susceptibility by Erikson stage")

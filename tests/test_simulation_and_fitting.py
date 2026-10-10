@@ -82,7 +82,7 @@ def test_t0_row_equals_initial_agent_state() -> None:
 
 
 def test_record_initial_can_be_disabled() -> None:
-    recorder, sim = build_recorder(record_initial=False)
+    recorder, _sim = build_recorder(record_initial=False)
     df = recorder.to_dataframe()
     assert sorted(df["time"].unique()) == list(range(1, STEPS + 1)), "关闭后时间轴应为 [1..steps]"
     assert len(df) == STEPS * 3
@@ -101,7 +101,7 @@ def test_reset_re_records_baseline() -> None:
     sim.run(2)
     df = recorder.to_dataframe()
     assert (df["time"] == 0).any(), "reset 后应重新出现基线行"
-    assert sorted(df["time"].unique())[0] == 0
+    assert min(df["time"].unique()) == 0
     assert len(df[df["time"] == 0]) == 3, "基线行应重新记录每个 agent"
     # 已知问题 P2-3：时间轴不会从 1 重新开始
     assert max(df["time"]) >= 2
@@ -705,7 +705,7 @@ def test_variance_report_treats_single_group_as_unverifiable() -> None:
         "state_only_one_group": [0.1, 0.2, None, None],
         "state_normal": [0.1, 0.2, 0.3, 0.4],
     })
-    usable, constant, unverifiable = web_app_module._column_variance_report(frame)
+    usable, _constant, unverifiable = web_app_module._column_variance_report(frame)
     assert "state_only_one_group" in unverifiable, f"unverifiable={unverifiable}"
     assert "state_normal" in usable
 

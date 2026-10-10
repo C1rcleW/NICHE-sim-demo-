@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Any, Optional
+
 import random
+from typing import Any
 
 
 class Relationship:
@@ -28,7 +29,7 @@ class Relationship:
         agent_b_id: str,
         relation_type: str = "generic",
         rng: Any = None,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         identity: tuple[str, str] | None = None,
     ):
         self.agent_a_id = agent_a_id
@@ -43,7 +44,7 @@ class Relationship:
         self.conflict: float = self.rng.uniform(0.0, 0.3)
 
     @staticmethod
-    def _make_rng(rng: Any, seed: Optional[int], identity: Optional[tuple[str, str]]) -> Any:
+    def _make_rng(rng: Any, seed: int | None, identity: tuple[str, str] | None) -> Any:
         """优先使用按身份派生的独立 RNG；否则退回共享 RNG。"""
         if seed is None:
             return rng if rng is not None else random

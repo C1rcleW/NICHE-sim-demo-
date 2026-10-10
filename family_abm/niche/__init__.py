@@ -1,5 +1,12 @@
-from .resources import Resource, EconomicCapital, CulturalCapital, SocialCapital, EmotionalCapital, ResourceBundle
 from .influence import InfluenceRelation
 from .micro_niche import MicroNiche
+from .resources import (
+    CulturalCapital,
+    EconomicCapital,
+    EmotionalCapital,
+    Resource,
+    ResourceBundle,
+    SocialCapital,
+)
 
-__all__ = ["Resource", "EconomicCapital", "CulturalCapital", "SocialCapital", "EmotionalCapital", "ResourceBundle", "InfluenceRelation", "MicroNiche"]
+__all__ = ["CulturalCapital", "EconomicCapital", "EmotionalCapital", "InfluenceRelation", "MicroNiche", "Resource", "ResourceBundle", "SocialCapital"]

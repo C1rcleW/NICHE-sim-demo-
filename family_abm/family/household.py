@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Any, Optional
+
+from typing import Any
+
 from ..core.agent import Agent
 from .family_member import FamilyMember
 from .relationships import Relationship
@@ -8,9 +10,9 @@ from .relationships import Relationship
 class Household(Agent):
     def __init__(
         self,
-        household_id: Optional[str] = None,
+        household_id: str | None = None,
         name: str = "Household",
-        environment: Optional[Any] = None,
+        environment: Any | None = None,
         **kwargs,
     ):
         """家庭智能体。
@@ -85,7 +87,7 @@ class Household(Agent):
             if self.environment is not None:
                 self.environment.remove_agent(member_id)
 
-    def get_relationship(self, agent_a: str, agent_b: str) -> Optional[Relationship]:
+    def get_relationship(self, agent_a: str, agent_b: str) -> Relationship | None:
         return self.relationships.get((agent_a, agent_b))
 
     def get_member_relationships(self, member_id: str) -> list[Relationship]:

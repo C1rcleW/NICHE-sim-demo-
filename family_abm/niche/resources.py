@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -9,10 +10,7 @@ class Resource:
     capacity: float = float("inf")
 
     def add(self, amount: float) -> float:
-        if self.capacity != float("inf"):
-            added = min(amount, self.capacity - self.value)
-        else:
-            added = amount
+        added = min(amount, self.capacity - self.value) if self.capacity != float("inf") else amount
         self.value += added
         return added
 

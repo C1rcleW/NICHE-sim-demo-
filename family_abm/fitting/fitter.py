@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import Any, Callable, Optional
+
 import warnings
+from typing import Any, Callable
+
 import numpy as np
 import pandas as pd
 from scipy.integrate import solve_ivp
-from scipy.optimize import minimize, differential_evolution
-from .lanchester import MODEL_REGISTRY, MODEL_PARAM_NAMES, MODEL_STATE_NAMES, solve_model
+from scipy.optimize import differential_evolution, minimize
+
+from .lanchester import MODEL_PARAM_NAMES, MODEL_REGISTRY, MODEL_STATE_NAMES, solve_model
 
 _STATE_PREFIX = 'state_'
 _RTOL = 1e-6
@@ -25,22 +28,22 @@ class ABMFitter:
 
     def __init__(self, model_func: Callable, param_names: list[str],
                  state_names: list[str],
-                 state_mapping: Optional[dict[str, str]] = None):
+                 state_mapping: dict[str, str] | None = None):
         self.model_func = model_func
         self.param_names = list(param_names)
         self.state_names = list(state_names)
         self.state_mapping = state_mapping or {}
         self.n_params = len(self.param_names)
         self.n_states = len(self.state_names)
-        self.fitted_params_: Optional[np.ndarray] = None
+        self.fitted_params_: np.ndarray | None = None
         self.fitted_param_dict: dict[str, float] = {}
-        self.fit_result: Optional[Any] = None
-        self.r_squared: Optional[float] = None
+        self.fit_result: Any | None = None
+        self.r_squared: float | None = None
         self.bounds: list[tuple[float, float]] = []
         self._bound_params: list[str] = []
-        self._t: Optional[np.ndarray] = None
-        self._y_true: Optional[np.ndarray] = None
-        self._y0: Optional[np.ndarray] = None
+        self._t: np.ndarray | None = None
+        self._y_true: np.ndarray | None = None
+        self._y0: np.ndarray | None = None
         self._resolved_columns: dict[str, str] = {}
 
     # ── Data ────────────────────────────────────────────────────────────
@@ -135,11 +138,12 @@ class ABMFitter:
         if np.any(np.isnan(y)):
             raise ValueError('Data contains NaN values.')
         if np.ptp(y, axis=0).max() < 1e-5:
-            warnings.warn('Data has near-zero variance — fitting may be unreliable.')
+            # stacklevel=2 让告警指向调用者，而不是本模块——否则调用方无法定位来源
+            warnings.warn('Data has near-zero variance — fitting may be unreliable.', stacklevel=2)
 
     # ── Objective ────────────────────────────────────────────────────────
 
-    def _solve(self, params: np.ndarray, t: np.ndarray, y0: np.ndarray) -> Optional[np.ndarray]:
+    def _solve(self, params: np.ndarray, t: np.ndarray, y0: np.ndarray) -> np.ndarray | None:
         """在**原始时间轴**上积分模型，返回形状为 (len(t), n_states) 的预测值。
 
         重要：时间自变量必须原样传给模型，**不能**做归一化/缩放。
@@ -171,7 +175,7 @@ class ABMFitter:
         return float(_SENTINEL if (np.isnan(mse) or np.isinf(mse)) else mse)
 
     def _r_squared(self, params: np.ndarray, t: np.ndarray,
-                   y_true: np.ndarray, y0: np.ndarray) -> Optional[float]:
+                   y_true: np.ndarray, y0: np.ndarray) -> float | None:
         """未截断的真实 R²（允许为负）；无法积分时返回 None。
 
         P1-1 将在 _save_result 中改用本方法，并让 summary_json 同时暴露原始值。
@@ -191,9 +195,9 @@ class ABMFitter:
     def fit_from_dataframe(
         self,
         df: pd.DataFrame,
-        agent_id: Optional[str] = None,
-        p0: Optional[list[float]] = None,
-        bounds: Optional[list[tuple[float, float]]] = None,
+        agent_id: str | None = None,
+        p0: list[float] | None = None,
+        bounds: list[tuple[float, float]] | None = None,
         method: str = 'L-BFGS-B',
     ) -> Any:
         """Single-start fit.  See fit_robust() for production use."""
@@ -220,8 +224,8 @@ class ABMFitter:
     def fit_robust(
         self,
         df: pd.DataFrame,
-        agent_id: Optional[str] = None,
-        bounds: Optional[list[tuple[float, float]]] = None,
+        agent_id: str | None = None,
+        bounds: list[tuple[float, float]] | None = None,
         n_starts: int = 8,
         seed: int = 42,
     ) -> Any:
@@ -244,7 +248,7 @@ class ABMFitter:
         best_result = None
         best_r2 = -np.inf
 
-        for i in range(n_starts):
+        for _i in range(n_starts):
             p0 = [rng.uniform(b[0], b[1]) for b in bounds]
             result = minimize(self._objective, p0, args=(t, y_true, y_true[0]),
                               method='L-BFGS-B', bounds=bounds,
@@ -263,8 +267,8 @@ class ABMFitter:
     def fit_global(
         self,
         df: pd.DataFrame,
-        agent_id: Optional[str] = None,
-        bounds: Optional[list[tuple[float, float]]] = None,
+        agent_id: str | None = None,
+        bounds: list[tuple[float, float]] | None = None,
     ) -> Any:
         """Global optimization via differential evolution (slow but thorough)."""
         if agent_id is not None:
@@ -431,7 +435,7 @@ class ABMFitter:
 
 # ── Builder ─────────────────────────────────────────────────────────────────
 
-def make_fitter(model_name: str, state_mapping: Optional[dict[str, str]] = None,
+def make_fitter(model_name: str, state_mapping: dict[str, str] | None = None,
                 **param_fix: float) -> ABMFitter:
     if model_name not in MODEL_REGISTRY:
         raise KeyError(f'Unknown model "{model_name}". Choose: {list(MODEL_REGISTRY)}')
@@ -468,9 +472,9 @@ def make_fitter(model_name: str, state_mapping: Optional[dict[str, str]] = None,
 def compare_models(
     df: pd.DataFrame,
     model_names: list[str],
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
     robust: bool = True,
-    state_mappings: Optional[dict[str, dict[str, str]]] = None,
+    state_mappings: dict[str, dict[str, str]] | None = None,
     **fit_kwargs,
 ) -> dict[str, ABMFitter]:
     """依次拟合多个模型并返回结果。

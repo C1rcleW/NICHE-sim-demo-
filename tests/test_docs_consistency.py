@@ -28,8 +28,7 @@ def test_derived_markdown_matches_docx() -> None:
         pytest.skip("研究设计文档.docx 不存在")
 
     sys.path.insert(0, str(REPO_ROOT / "tools"))
-    import export_research_md  # noqa: PLC0415
-
+    import export_research_md
     from docx import Document
 
     expected = export_research_md.convert(Document(str(DOCX)))

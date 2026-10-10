@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Any, Optional
+
 import math
 import random
+from typing import Any
+
 from ..core.agent import Agent
 from .influence import initial_influence_stock, susceptibility
 
@@ -61,9 +63,9 @@ class FamilyMember(Agent):
         name: str = "",
         age: float = 25.0,
         gender: str = "other",
-        personality: Optional[dict[str, float]] = None,
+        personality: dict[str, float] | None = None,
         role_name: str = "adult",
-        environment: Optional[Any] = None,
+        environment: Any | None = None,
         **kwargs,
     ):
         """家庭成员智能体。
@@ -137,7 +139,7 @@ class FamilyMember(Agent):
             merged.update(getattr(self.environment, "params", None) or {})
         return merged
 
-    def _household(self) -> Optional[Any]:
+    def _household(self) -> Any | None:
         """返回自己所属的家庭智能体；不在任何家庭中时返回 None。"""
         env = self.environment
         if env is None:

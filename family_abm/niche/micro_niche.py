@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import Any, Optional
+
+from typing import Any
+
 import numpy as np
+
 from .resources import ResourceBundle
 
 
 class MicroNiche:
-    def __init__(self, niche_id: str, dimensions: Optional[list[str]] = None):
+    def __init__(self, niche_id: str, dimensions: list[str] | None = None):
         self.niche_id = niche_id
         self.dimensions = dimensions or ["economic", "cultural", "social", "emotional"]
         self.position: dict[str, float] = {d: 0.5 for d in self.dimensions}
@@ -42,7 +45,7 @@ class MicroNiche:
         avg_permeability = float(np.mean([self.boundary_permeability[d] for d in self.dimensions]))
         return overlap * avg_permeability
 
-    def update_from_agent_state(self, agent_state: dict[str, float], mapping: Optional[dict[str, str]] = None) -> None:
+    def update_from_agent_state(self, agent_state: dict[str, float], mapping: dict[str, str] | None = None) -> None:
         mapping = mapping or {
             "income": "economic",
             "education": "cultural",

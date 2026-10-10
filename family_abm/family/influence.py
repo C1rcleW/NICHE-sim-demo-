@@ -21,7 +21,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 # ── 埃里克森阶段定义 ────────────────────────────────────────────────────────
 #
@@ -170,7 +170,7 @@ def initial_influence_stock(age: float) -> float:
 
 def apply_influence(
     member: Any,
-    household: Optional[Any],
+    household: Any | None,
     params: dict[str, float],
     *,
     rng: Any,

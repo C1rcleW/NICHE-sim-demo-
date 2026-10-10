@@ -32,7 +32,14 @@ if str(REPO_ROOT) not in sys.path:
 
 import numpy as np  # noqa: E402
 
-from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder  # noqa: E402
+from family_abm import (  # noqa: E402
+    Environment,
+    FamilyMember,
+    Household,
+    Scheduler,
+    Simulation,
+    StateRecorder,
+)
 
 DEFAULT_SEED = 42
 DEFAULT_STEPS = 120
@@ -74,9 +81,9 @@ def collect_stats(recorder: StateRecorder) -> dict:
                 "min": _round(series.min()),
                 "max": _round(series.max()),
             }
-        stats[str(agent_type)] = {"rows": int(len(group)), "columns": columns}
+        stats[str(agent_type)] = {"rows": len(group), "columns": columns}
     return {
-        "rows": int(len(df)),
+        "rows": len(df),
         "time_min": int(df["time"].min()) if not df.empty else None,
         "time_max": int(df["time"].max()) if not df.empty else None,
         "agents": stats,

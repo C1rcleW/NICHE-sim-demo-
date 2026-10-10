@@ -33,13 +33,20 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.9/3.10
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 
+# 本文件整体打上 packaging 标记：其中的构建/安装测试会调用 pip 与 build，
+# 对运行环境敏感。CI 在环境受限的平台上会显式跳过（-m "not packaging"），
+# 由专门的 packaging job 在标准环境下完整执行。
+pytestmark = pytest.mark.packaging
+
 # import family_abm 时真正需要的第三方依赖（源码里实际 import）
 REQUIRED_RUNTIME_DEPS = ["numpy", "pandas", "scipy", "matplotlib", "fastapi", "uvicorn", "jinja2", "pydantic"]
 # 惰性导入的依赖：只作为 extra 提供
 OPTIONAL_DEPS = {"networkx": "viz"}
 
 # 构建 wheel/sdist 所需的文件与目录（相对仓库根）
-BUILD_INPUTS = ["family_abm", "pyproject.toml", "setup.py", "README.md"]
+# LICENSE 是必需的：pyproject 的 license-files 指向它，缺了会让构建在
+# 干净环境下取不到授权文件（本地恰好有才没暴露）。
+BUILD_INPUTS = ["family_abm", "pyproject.toml", "setup.py", "README.md", "LICENSE"]
 
 
 def _load_pyproject() -> dict:
@@ -169,12 +176,33 @@ def test_package_version_matches_pyproject() -> None:
     assert family_abm.__version__ == _load_pyproject()["project"]["version"]
 
 
-def test_pyproject_does_not_claim_a_license_that_is_missing() -> None:
-    """仓库没有 LICENSE 文件时，不得在元数据里声明 license（避免虚假授权声明）。"""
+def test_pyproject_license_declaration_matches_repository() -> None:
+    """授权声明必须与实际文件一致——两个方向都要校验。
+
+    回归：原测试只在"没有 LICENSE 文件"时断言不得声明 license，
+    这在仓库**有** LICENSE 之后会静默变成空操作，等于不再校验。
+    """
     project = _load_pyproject()["project"]
-    has_license_file = any((REPO_ROOT / name).is_file() for name in ("LICENSE", "LICENSE.txt", "LICENSE.md", "COPYING"))
-    if not has_license_file:
-        assert "license" not in project, "仓库无 LICENSE 文件，却声明了 license 字段"
+    license_files = list(project.get("license-files", []))
+    declared = project.get("license")
+    present = [name for name in ("LICENSE", "LICENSE.txt", "LICENSE.md", "COPYING")
+               if (REPO_ROOT / name).is_file()]
+
+    if not present:
+        assert "license" not in project and not license_files, (
+            "仓库无 LICENSE 文件，却声明了 license/license-files"
+        )
+        return
+
+    # 有文件时：必须声明，且声明的每个路径都真实存在
+    assert declared, "仓库有 LICENSE 文件，但 pyproject 未声明 license"
+    assert license_files, "仓库有 LICENSE 文件，但 pyproject 未声明 license-files"
+    missing = [name for name in license_files if not (REPO_ROOT / name).is_file()]
+    assert not missing, f"license-files 指向了不存在的文件：{missing}"
+
+    # 构建输入必须包含授权文件，否则在干净环境构建时会缺失
+    for name in license_files:
+        assert name in BUILD_INPUTS, f"BUILD_INPUTS 未包含 {name}，干净环境构建会缺少授权文件"
 
 
 # ── 构建与安装冒烟 ────────────────────────────────────────────────────────
@@ -182,7 +210,12 @@ def test_pyproject_does_not_claim_a_license_that_is_missing() -> None:
 
 @pytest.fixture(scope="module")
 def built_dist(tmp_path_factory: pytest.TempPathFactory) -> dict:
-    """在源码树拷贝上构建 wheel、隔离安装；构建工具缺失则 skip。"""
+    """在源码树拷贝上构建 wheel、隔离安装；构建工具缺失则 skip。
+
+    本 fixture 及其下游测试都会调用 pip / build 并跨进程安装，对运行环境敏感
+    （磁盘空间、杀毒软件、路径长度、pip 版本）。因此统一打上 `packaging` 标记，
+    便于在环境受限的平台上选择性跳过。
+    """
     preexisting = {name for name in ("build", "dist", "family_abm.egg-info") if (REPO_ROOT / name).exists()}
     stage = _stage_sources(tmp_path_factory.mktemp("src"))
     out_dir = tmp_path_factory.mktemp("dist")

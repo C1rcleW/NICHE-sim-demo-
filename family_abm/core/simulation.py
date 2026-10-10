@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import random
-from typing import Any, Callable, Optional
+from typing import Any, Callable
+
 from .environment import Environment
 from .scheduler import Scheduler
 
@@ -12,9 +14,9 @@ class Simulation:
     def __init__(
         self,
         environment: Environment,
-        scheduler: Optional[Scheduler] = None,
+        scheduler: Scheduler | None = None,
         record_initial: bool = True,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ):
         """
         Parameters

@@ -1,9 +1,8 @@
 from __future__ import annotations
-from typing import Optional
 
 
 class Role:
-    def __init__(self, name: str, privileges: Optional[dict[str, float]] = None, norms: Optional[list[str]] = None):
+    def __init__(self, name: str, privileges: dict[str, float] | None = None, norms: list[str] | None = None):
         self.name = name
         self.privileges = privileges or {}
         self.norms = norms or []

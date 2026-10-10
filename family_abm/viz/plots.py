@@ -1,15 +1,16 @@
 from __future__ import annotations
-from typing import Any, Optional
 
+from typing import Any
+
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 
 from ..niche.micro_niche import MicroNiche
-
 
 # ── Global style ────────────────────────────────────────────────────────────
 
@@ -28,11 +29,11 @@ plt.rcParams.update({
 
 def plot_timeseries(
     df: pd.DataFrame,
-    state_columns: Optional[list[str]] = None,
-    agent_id: Optional[str] = None,
+    state_columns: list[str] | None = None,
+    agent_id: str | None = None,
     title: str = "Agent State Time Series",
     figsize: tuple[float, float] = (10, 5),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
     if agent_id is not None:
         df = df[df["agent_id"] == agent_id].copy()
@@ -58,10 +59,10 @@ def plot_timeseries(
 
 def plot_aggregate(
     df: pd.DataFrame,
-    state_columns: Optional[list[str]] = None,
+    state_columns: list[str] | None = None,
     title: str = "Population Aggregate Statistics",
     figsize: tuple[float, float] = (12, 5),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
     cols = state_columns or [c for c in df.columns if c.startswith("state_")]
     grouped = df.groupby("time")[cols]
@@ -100,10 +101,10 @@ def plot_phase_portrait(
     df: pd.DataFrame,
     x_state: str = "state_happiness",
     y_state: str = "state_stress",
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
     title: str = "Phase Portrait",
     figsize: tuple[float, float] = (6, 6),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
     if agent_id is not None:
         df = df[df["agent_id"] == agent_id].copy()
@@ -135,11 +136,11 @@ def plot_phase_portrait(
 
 def plot_niche_space(
     niches: dict[str, MicroNiche],
-    dims: Optional[list[str]] = None,
-    labels: Optional[dict[str, str]] = None,
+    dims: list[str] | None = None,
+    labels: dict[str, str] | None = None,
     title: str = "Social Micro-Niche Space",
     figsize: tuple[float, float] = (8, 6),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
     dims = dims or ["economic", "cultural", "social"]
 
@@ -191,12 +192,13 @@ def plot_family_network(
     household: Any,
     title: str = "Family Relationship Network",
     figsize: tuple[float, float] = (8, 6),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
     try:
         import networkx as nx
-    except ImportError:
-        raise ImportError("plot_family_network requires networkx. Run: pip install networkx")
+    except ImportError as exc:
+        # 保留原始异常链（from exc），否则丢失"networkx 缺失"的真实原因
+        raise ImportError("plot_family_network requires networkx. Run: pip install networkx") from exc
 
     G = nx.Graph()
     for mid, member in household.members.items():
@@ -256,11 +258,11 @@ def plot_family_network(
 def plot_fit_diagnostics(
     df: pd.DataFrame,
     fitter: Any,
-    agent_id: Optional[str] = None,
-    state_names: Optional[list[str]] = None,
+    agent_id: str | None = None,
+    state_names: list[str] | None = None,
     title: str = "ODE Fit Diagnostics",
     figsize: tuple[float, float] = (12, 4),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
 
     state_names = state_names or fitter.state_names
@@ -307,10 +309,10 @@ def plot_fit_diagnostics(
 def plot_agent_comparison(
     df: pd.DataFrame,
     state: str = "state_happiness",
-    agent_ids: Optional[list[str]] = None,
+    agent_ids: list[str] | None = None,
     title: str = "Agent Comparison",
     figsize: tuple[float, float] = (10, 5),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> plt.Figure:
     if agent_ids is None:
         agent_ids = df["agent_id"].unique().tolist()

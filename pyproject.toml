@@ -49,7 +49,8 @@ dependencies = [
 # httpx 是 fastapi.testclient 的必需依赖，tools/verify_install.py 的 HTTP 端到端
 # 依赖它，因此必须出现在 dev extra 中，否则按声明安装也会让冒烟退化为跳过。
 # python-docx 供 tools/build_research_doc.py 与 export_research_md.py 使用。
-dev = ["pytest>=7.0", "build>=0.10", "httpx>=0.24", "python-docx>=1.0"]
+# ruff 钉住版本：其默认规则集会随版本变化，浮动安装会让本地与 CI 结果不一致
+dev = ["pytest>=7.0", "build>=0.10", "httpx>=0.24", "python-docx>=1.0", "ruff==0.17.0"]
 viz = ["networkx>=2.6"]
 
 [project.urls]
@@ -59,19 +60,33 @@ Issues = "https://github.com/C1rcleW/NICHE-sim-demo-/issues"
 # ── 工具配置 ────────────────────────────────────────────────────────────────
 
 # 忽略规则说明：
-#   E501  行长度由人类判断，中文注释按字符数计长会误报
-#   E701  个别紧凑的单行分支（if x: return y）可读性更好
+#   E501   行长度由人类判断，中文注释按字符数计长会误报
+#   E701   个别紧凑的单行分支（if x: return y）可读性更好
+#   RUF001/2/3  "歧义 Unicode 字符"检查面向英文代码库（防止同形字混淆）。
+#          本项目文档与注释以中文为主，中文标点（「」、全角括号、破折号）
+#          会被全部命中，产生上千条无意义告警。
+#   RUF012 测试与示例里的类属性默认值不需要 ClassVar 标注
+#   BLE001 顶层兜底 except Exception 是本项目刻意的设计（见 fitter / web/app.py）
+#   PLW0602 模块级单例的 global 声明
 [tool.ruff]
 target-version = "py39"
 line-length = 110
 
+# 显式列出规则集，而不是依赖 ruff 的默认全集：
+# 默认集会随版本变化（0.15 → 0.17 让本项目多出 179 项），显式声明才能稳定。
 [tool.ruff.lint]
-ignore = ["E501", "E701"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "E701", "RUF001", "RUF002", "RUF003", "RUF012", "BLE001", "PLW0602"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # 测试会构建 wheel 并安装到临时环境，默认超时不够时按需调大
 addopts = "-q"
+# packaging 标记：这些测试会调用 pip / build 并跨进程安装，对运行环境敏感
+# （磁盘、杀毒软件、路径长度、pip 版本）。单独标记后可以在不同平台上选择性运行。
+markers = [
+    "packaging: 需要 pip/build 的构建与安装测试（环境敏感）",
+]
 
 # 显式列出包，避免把 tests/ 与 tools/ 一并装进 wheel
 [tool.setuptools]

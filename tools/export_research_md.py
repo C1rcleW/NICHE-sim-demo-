@@ -55,7 +55,7 @@ def _paragraph_markdown(paragraph: Paragraph) -> str:
         text = run.text
         if not text:
             continue
-        # 加粗 run 还原为 ** 标记；跳过纯空白加粗避免产生 ** ** 
+        # 加粗 run 还原为 ** 标记；跳过纯空白加粗避免产生 ** **
         if run.bold and text.strip():
             pieces.append(f"**{text}**")
         else:
@@ -65,10 +65,7 @@ def _paragraph_markdown(paragraph: Paragraph) -> str:
 
 def _is_mono(paragraph: Paragraph) -> bool:
     """判断是否为等宽（代码）段落。"""
-    for run in paragraph.runs:
-        if run.font.name and "Courier" in run.font.name:
-            return True
-    return False
+    return any(run.font.name and "Courier" in run.font.name for run in paragraph.runs)
 
 
 def _table_markdown(table: Table) -> list[str]:

@@ -47,7 +47,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder  # noqa: E402
+from family_abm import (  # noqa: E402
+    Environment,
+    FamilyMember,
+    Household,
+    Scheduler,
+    Simulation,
+    StateRecorder,
+)
 from family_abm.fitting.fitter import make_fitter  # noqa: E402
 
 # ── 实验配置 ────────────────────────────────────────────────────────────────
@@ -142,7 +149,7 @@ def aggregate(df, low=0, high=None):
     return grouped
 
 
-def trajectory_deviation(baseline: "np.ndarray", other: "np.ndarray") -> dict:
+def trajectory_deviation(baseline: np.ndarray, other: np.ndarray) -> dict:
     """相对基线的偏离：用基线幅度归一化，便于跨状态量比较。"""
     n = min(len(baseline), len(other))
     delta = other[:n] - baseline[:n]
@@ -293,7 +300,7 @@ def main(argv=None) -> int:
         print(row)
 
     print("\n成员间离散度趋势:")
-    for key, label, _ in CONDITIONS:
+    for key, _label, _params in CONDITIONS:
         for record in results["conditions"][key]["dispersion"]:
             print(f"  {key} {record['state']:<18} {record['direction']:<11} "
                   f"slope={record['slope']:+.6f}  首={record['first']:.4f} 末={record['last']:.4f}")

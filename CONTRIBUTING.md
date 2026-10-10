@@ -23,7 +23,8 @@ python -m pytest tests/ -q
 
 ```bash
 python -m pytest tests/ -q                              # 全部测试
-ruff check family_abm tests tools experiments           # 静态检查
+python -m pytest tests/ -q -m "not packaging"           # 跳过构建/安装测试（环境受限时）
+python -m ruff check family_abm tests tools experiments # 静态检查（ruff 0.17.0，见 pyproject）
 node tools/check_dashboard_behavior.js                  # 前端行为（可选）
 
 # 若改动影响默认行为，需重跑基线并确认差异符合预期
@@ -32,6 +33,10 @@ python tools/baseline.py --check baseline/default_seed42.json
 # 若改动了 pyproject.toml 的依赖
 python tools/sync_requirements.py
 ```
+
+> **ruff 版本是钉住的**（`pyproject.toml` 的 `[dev]` 与 CI 都用 `0.17.0`）。
+> ruff 的默认规则集会随版本变化，浮动安装会让本地与 CI 结果不一致；规则集本身
+> 也在 `[tool.ruff.lint] select` 中显式声明，不依赖默认全集。
 
 ## 两条硬性约定
 

@@ -1,4 +1,4 @@
-from .recorder import StateRecorder
 from .features import FeatureExtractor
+from .recorder import StateRecorder
 
-__all__ = ["StateRecorder", "FeatureExtractor"]
+__all__ = ["FeatureExtractor", "StateRecorder"]

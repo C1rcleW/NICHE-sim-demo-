@@ -135,7 +135,7 @@ def test_web_api_preserves_null_instead_of_zero() -> None:
     assert client.post("/api/run", json={"steps": 20}).status_code == 200
     payload = client.get("/api/data").json()
 
-    assert "statistics" in payload and payload["statistics"], "应回传分组统计"
+    assert payload.get("statistics"), "应回传分组统计"
 
     household_rows = [row for row in payload["data"] if row["agent_type"] == "Household"]
     assert household_rows, "应有 Household 行"

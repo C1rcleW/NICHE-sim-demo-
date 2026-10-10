@@ -94,7 +94,7 @@ def test_susceptibility_scale_preserves_shape_and_monotonicity() -> None:
         assert all(b <= a + 1e-12 for a, b in zip(values, values[1:])), (
             f"scale={scale} 破坏单调性"
         )
-        assert 0.0 <= min(values) and max(values) <= 1.0, f"scale={scale} 越界"
+        assert min(values) >= 0.0 and max(values) <= 1.0, f"scale={scale} 越界"
         # 缩放应等比例作用（未钳位处）
         for age in (9.0, 15.0, 25.0):
             expected = baseline[[0, 2, 5, 9, 15, 25, 50].index(age)] * scale
@@ -176,11 +176,11 @@ def test_influence_effect_grows_with_strength() -> None:
     """影响强度越大，子代轨迹偏离无影响基线的幅度越大。"""
 
     def final_happiness(strength):
-        env, sim, hh, members = build_household(params={"influence_strength": strength})
+        _env, sim, _hh, members = build_household(params={"influence_strength": strength})
         recorder = StateRecorder(record_agents=True)
         sim.add_recorder(recorder)
         sim.run(120)
-        child = [m for m in members if m.get_attribute("age") < 18][0]
+        child = next(m for m in members if m.get_attribute("age") < 18)
         return child.get_state_value("happiness")
 
     off, weak, strong = (final_happiness(s) for s in (0.0, 0.5, 2.0))
@@ -193,7 +193,7 @@ def test_received_influence_shrinks_as_child_ages() -> None:
 
     注意：不能用"当前年龄"筛选孩子——仿真跑完后他已成年，要用构造时的引用。
     """
-    env, sim, hh, members = build_household(params={"influence_strength": 1.0})
+    _env, sim, _hh, members = build_household(params={"influence_strength": 1.0})
     child = members[-1]
     assert child.get_attribute("age") < 18, "该成员构造时应为未成年人"
     recorder = StateRecorder(record_agents=True)
@@ -208,7 +208,7 @@ def test_received_influence_shrinks_as_child_ages() -> None:
 
 def test_child_gains_influence_capacity_at_adulthood() -> None:
     """子代成年后应获得养育能力并转为施加影响一方（否则角色切换形同虚设）。"""
-    env, sim, hh, members = build_household(ages=(40, 38, 6), params={"influence_strength": 1.0})
+    _env, sim, _hh, members = build_household(ages=(40, 38, 6), params={"influence_strength": 1.0})
     recorder = StateRecorder(record_agents=True)
     sim.add_recorder(recorder)
     sim.run(180)                        # 6 岁起走 15 年 -> 约 21 岁
@@ -224,8 +224,8 @@ def test_siblings_share_influence_rather_than_amplify_it() -> None:
     （因为影响按受影响的未成年成员数分摊）。
     """
     def first_child_received(num_children: int) -> float:
-        ages = (40, 38) + tuple(6 for _ in range(num_children))
-        env, sim, hh, members = build_household(ages=ages, params={"influence_strength": 1.0})
+        ages = (40, 38, *tuple(6 for _ in range(num_children)))
+        _env, sim, _hh, members = build_household(ages=ages, params={"influence_strength": 1.0})
         children = [m for m in members if m.get_attribute("age") < 18]
         child = children[0]
         # 用记录的第一批非零影响量比较（避免步数差异影响）
@@ -246,7 +246,7 @@ def test_influence_disabled_leaves_members_uncoupled() -> None:
     """影响关闭时，两类成员的状态演化互不影响（消融条件的基线）。"""
 
     def child_health_with(strength):
-        env, sim, hh, members = build_household(params={"influence_strength": strength})
+        _env, sim, _hh, members = build_household(params={"influence_strength": strength})
         sim.run(60)
         child = members[-1]
         return child.get_state_value("health")
@@ -276,7 +276,7 @@ def test_income_support_reduces_pressure_and_child_stress() -> None:
     回归：早先把 support 加到基准上，导致支持越多、测得的压力越大（方向反了）。
     """
     def measure(support):
-        env, sim, hh, members = build_household(params={"income_support": support})
+        _env, sim, hh, members = build_household(params={"income_support": support})
         sim.run(120)
         child = members[-1]
         return hh.get_state_value("economic_pressure"), child.get_state_value("stress")
@@ -311,7 +311,7 @@ def test_young_members_are_more_sensitive_to_economic_pressure() -> None:
 def test_influence_mechanism_preserves_reproducibility() -> None:
     """机制引入的随机数消耗不得破坏可复现性。"""
     def signature(seed):
-        env, sim, hh, members = build_household(seed=seed, params={"influence_strength": 1.0})
+        _env, sim, _hh, _members = build_household(seed=seed, params={"influence_strength": 1.0})
         recorder = StateRecorder(record_agents=True)
         sim.add_recorder(recorder)
         sim.run(60)

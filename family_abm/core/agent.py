@@ -1,14 +1,15 @@
 from __future__ import annotations
-from typing import Any, Optional
+
 import uuid
+from typing import Any
 
 
 class Agent:
     def __init__(
         self,
-        agent_id: Optional[str] = None,
-        attributes: Optional[dict[str, Any]] = None,
-        state: Optional[dict[str, Any]] = None,
+        agent_id: str | None = None,
+        attributes: dict[str, Any] | None = None,
+        state: dict[str, Any] | None = None,
     ):
         self.id = agent_id or str(uuid.uuid4())
         self.attributes = attributes or {}

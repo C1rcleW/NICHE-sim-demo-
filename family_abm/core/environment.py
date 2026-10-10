@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import random
-from typing import Any, Optional
+from typing import Any
+
 from .agent import Agent
 
 
@@ -25,9 +27,9 @@ class Environment:
         self.properties: dict[str, Any] = {}
         self.params: dict[str, float] = {}
         self.rng: Any = random
-        self.seed: Optional[int] = None
+        self.seed: int | None = None
 
-    def add_agent(self, agent: Agent, x: Optional[float] = None, y: Optional[float] = None) -> None:
+    def add_agent(self, agent: Agent, x: float | None = None, y: float | None = None) -> None:
         self.agents[agent.id] = agent
         agent.environment = self
         if x is not None:
@@ -44,7 +46,7 @@ class Environment:
     def get_agents(self) -> list[Agent]:
         return list(self.agents.values())
 
-    def get_agent_by_id(self, agent_id: str) -> Optional[Agent]:
+    def get_agent_by_id(self, agent_id: str) -> Agent | None:
         return self.agents.get(agent_id)
 
     def get_agents_by_type(self, agent_type: type) -> list[Agent]:

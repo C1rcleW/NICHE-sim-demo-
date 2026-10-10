@@ -45,8 +45,8 @@ if str(REPO_ROOT) not in sys.path:
 from experiments.mechanism_validation import (  # noqa: E402
     STEPS,
     e2_stage_profile,
-    e4_lagged_effect,
     e3_dose_response,
+    e4_lagged_effect,
     susceptibility,
 )
 

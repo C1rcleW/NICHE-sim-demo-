@@ -12,38 +12,83 @@ from .core.simulation import Simulation
 from .family.family_member import FamilyMember
 from .family.household import Household
 from .family.relationships import Relationship
-from .family.roles import Role, ParentRole, ChildRole, AdultRole, ElderRole
-from .niche.resources import Resource, EconomicCapital, CulturalCapital, SocialCapital, EmotionalCapital, ResourceBundle
+from .family.roles import AdultRole, ChildRole, ElderRole, ParentRole, Role
+from .fitting import (
+    ABMFitter,
+    compare_models,
+    competition_linear_law,
+    competition_square_law,
+    logistic_growth,
+    lotka_volterra,
+    make_fitter,
+    resource_competition,
+    social_influence,
+    solve_model,
+    solve_named,
+    wellbeing_balance,
+)
+from .ml.features import FeatureExtractor
+from .ml.recorder import StateRecorder
 from .niche.influence import InfluenceRelation
 from .niche.micro_niche import MicroNiche
-from .ml.recorder import StateRecorder
-from .ml.features import FeatureExtractor
-from .fitting import (
-    ABMFitter, make_fitter, compare_models,
-    solve_model, solve_named,
-    competition_square_law, competition_linear_law,
-    social_influence, wellbeing_balance,
-    logistic_growth, lotka_volterra, resource_competition,
+from .niche.resources import (
+    CulturalCapital,
+    EconomicCapital,
+    EmotionalCapital,
+    Resource,
+    ResourceBundle,
+    SocialCapital,
 )
 from .viz import (
-    plot_timeseries, plot_phase_portrait, plot_niche_space,
-    plot_family_network, plot_fit_diagnostics, plot_aggregate,
     plot_agent_comparison,
+    plot_aggregate,
+    plot_family_network,
+    plot_fit_diagnostics,
+    plot_niche_space,
+    plot_phase_portrait,
+    plot_timeseries,
 )
 
 __all__ = [
-    "Agent", "Environment", "Scheduler", "Simulation",
-    "FamilyMember", "Household", "Relationship",
-    "Role", "ParentRole", "ChildRole", "AdultRole", "ElderRole",
-    "Resource", "EconomicCapital", "CulturalCapital", "SocialCapital", "EmotionalCapital", "ResourceBundle",
-    "InfluenceRelation", "MicroNiche",
-    "StateRecorder", "FeatureExtractor",
-    "ABMFitter", "make_fitter", "compare_models",
-    "solve_model", "solve_named",
-    "competition_square_law", "competition_linear_law",
-    "social_influence", "wellbeing_balance",
-    "logistic_growth", "lotka_volterra", "resource_competition",
-    "plot_timeseries", "plot_phase_portrait", "plot_niche_space",
-    "plot_family_network", "plot_fit_diagnostics", "plot_aggregate",
+    "ABMFitter",
+    "AdultRole",
+    "Agent",
+    "ChildRole",
+    "CulturalCapital",
+    "EconomicCapital",
+    "ElderRole",
+    "EmotionalCapital",
+    "Environment",
+    "FamilyMember",
+    "FeatureExtractor",
+    "Household",
+    "InfluenceRelation",
+    "MicroNiche",
+    "ParentRole",
+    "Relationship",
+    "Resource",
+    "ResourceBundle",
+    "Role",
+    "Scheduler",
+    "Simulation",
+    "SocialCapital",
+    "StateRecorder",
+    "compare_models",
+    "competition_linear_law",
+    "competition_square_law",
+    "logistic_growth",
+    "lotka_volterra",
+    "make_fitter",
     "plot_agent_comparison",
+    "plot_aggregate",
+    "plot_family_network",
+    "plot_fit_diagnostics",
+    "plot_niche_space",
+    "plot_phase_portrait",
+    "plot_timeseries",
+    "resource_competition",
+    "social_influence",
+    "solve_model",
+    "solve_named",
+    "wellbeing_balance",
 ]

@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import Any, Optional
-import pandas as pd
+
+from typing import Any
+
 import numpy as np
+import pandas as pd
+
 from .recorder import StateRecorder
 
 
@@ -12,7 +15,7 @@ class FeatureExtractor:
     def build_agent_panel(self) -> pd.DataFrame:
         return self.recorder.to_dataframe()
 
-    def build_agent_trajectories(self, agent_id: Optional[str] = None) -> pd.DataFrame:
+    def build_agent_trajectories(self, agent_id: str | None = None) -> pd.DataFrame:
         df = self.build_agent_panel()
         if agent_id is not None:
             df = df[df["agent_id"] == agent_id]
@@ -20,10 +23,10 @@ class FeatureExtractor:
 
     def extract_features(
         self,
-        feature_columns: Optional[list[str]] = None,
-        target_column: Optional[str] = None,
+        feature_columns: list[str] | None = None,
+        target_column: str | None = None,
         lag_steps: int = 1,
-    ) -> tuple[np.ndarray, Optional[np.ndarray]]:
+    ) -> tuple[np.ndarray, np.ndarray | None]:
         df = self.build_agent_panel()
         if df.empty:
             return np.array([]), None
@@ -43,7 +46,7 @@ class FeatureExtractor:
 
     def build_transition_dataset(
         self,
-        state_columns: Optional[list[str]] = None,
+        state_columns: list[str] | None = None,
         lag: int = 1,
     ) -> pd.DataFrame:
         df = self.build_agent_panel()
@@ -66,7 +69,7 @@ class FeatureExtractor:
                 records.append(row)
         return pd.DataFrame(records)
 
-    def build_network_features(self, agent_id: Optional[str] = None) -> pd.DataFrame:
+    def build_network_features(self, agent_id: str | None = None) -> pd.DataFrame:
         df = self.build_agent_panel()
         if df.empty:
             return pd.DataFrame()

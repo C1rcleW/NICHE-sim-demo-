@@ -124,7 +124,15 @@ def test_readme_python_api_example_runs() -> None:
 
     import numpy as np
 
-    from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder, make_fitter
+    from family_abm import (
+        Environment,
+        FamilyMember,
+        Household,
+        Scheduler,
+        Simulation,
+        StateRecorder,
+        make_fitter,
+    )
 
     random.seed(7)
     np.random.seed(7)

@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import random
 from typing import Any
+
 from .agent import Agent
 from .environment import Environment
 

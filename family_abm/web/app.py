@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Optional
+
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, Request
@@ -14,10 +15,10 @@ from ..core.scheduler import Scheduler
 from ..core.simulation import Simulation
 from ..family.family_member import FamilyMember
 from ..family.household import Household
-from ..niche.micro_niche import MicroNiche
-from ..ml.recorder import StateRecorder
 from ..fitting.fitter import make_fitter
 from ..fitting.lanchester import MODEL_REGISTRY, MODEL_STATE_NAMES
+from ..ml.recorder import StateRecorder
+from ..niche.micro_niche import MicroNiche
 
 HERE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(HERE / 'templates'))
@@ -26,9 +27,9 @@ app = FastAPI(title='Family ABM Dashboard', version='0.2.0')
 app.mount('/static', StaticFiles(directory=str(HERE / 'static')), name='static')
 
 # ── Global simulation state ────────────────────────────────────────────────
-_sim_env: Optional[Environment] = None
-_sim_df: Optional[pd.DataFrame] = None
-_sim_recorder: Optional[StateRecorder] = None
+_sim_env: Environment | None = None
+_sim_df: pd.DataFrame | None = None
+_sim_recorder: StateRecorder | None = None
 _last_fitter = None
 
 # ── Pydantic models ────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ class SimConfig(BaseModel):
     steps: int = 120
     # 随机种子：给出后同一配置可复现（含智能体初始化）。
     # 默认 42 而非 None，使 Web 端默认行为可复现。
-    seed: Optional[int] = 42
+    seed: int | None = 42
     params: dict = {}
     families: list[dict] = [
         {'name': 'Smith', 'members': [
@@ -53,12 +54,12 @@ class SimConfig(BaseModel):
 
 class FitRequest(BaseModel):
     model_name: str = 'wellbeing'
-    agent_id: Optional[str] = None
+    agent_id: str | None = None
     robust: bool = True
     # 抽象模型（square_law 的 R1/R2、influence 的 O1/O2 等）与 ABM 状态列之间没有
     # 默认语义对应关系，必须由调用方显式给出；默认 None 表示使用
     # 「状态名 -> state_<状态名>」约定。
-    state_mapping: Optional[dict[str, str]] = None
+    state_mapping: dict[str, str] | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────
@@ -204,7 +205,7 @@ def _column_variance_report(df: pd.DataFrame) -> tuple[list[str], list[str], lis
 
 
 @app.get('/api/models')
-async def api_models(agent_id: Optional[str] = None):
+async def api_models(agent_id: str | None = None):
     """列出可用模型及其状态名、以及相对当前数据的可映射性。
 
     前端据此决定下拉里哪些模型可以直接拟合；对不可直接映射的模型给出**候选**
