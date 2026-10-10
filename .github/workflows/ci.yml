@@ -65,7 +65,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
       - name: 运行测试（排除环境敏感的构建/安装测试）
-        run: python -m pytest tests/ -q -m "not packaging" -ra
+        # -rf 打印失败摘要，--tb=long 保留完整回溯：Windows 上曾出现本地无法复现的
+        # 失败，完整的失败定位信息是排查前提。PYTHONUTF8 避免中文输出被代码页转码。
+        env:
+          PYTHONUTF8: "1"
+        run: python -m pytest tests/ -q -m "not packaging" -rf --tb=long
 
   package:
     name: 打包与安装冒烟
