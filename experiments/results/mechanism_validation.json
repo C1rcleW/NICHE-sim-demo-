@@ -1,0 +1,389 @@
+{
+  "seeds": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005
+  ],
+  "steps": 300,
+  "e1": {
+    "monotone_violations": 0,
+    "curve_samples": [
+      {
+        "age": 0.0,
+        "susceptibility": 0.95
+      },
+      {
+        "age": 2.0,
+        "susceptibility": 0.85
+      },
+      {
+        "age": 4.0,
+        "susceptibility": 0.75
+      },
+      {
+        "age": 6.0,
+        "susceptibility": 0.625
+      },
+      {
+        "age": 8.0,
+        "susceptibility": 0.5
+      },
+      {
+        "age": 10.0,
+        "susceptibility": 0.5
+      },
+      {
+        "age": 12.0,
+        "susceptibility": 0.39
+      },
+      {
+        "age": 14.0,
+        "susceptibility": 0.28
+      },
+      {
+        "age": 16.0,
+        "susceptibility": 0.28
+      },
+      {
+        "age": 18.0,
+        "susceptibility": 0.21500000000000002
+      },
+      {
+        "age": 20.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 22.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 24.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 26.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 28.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 30.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 32.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 34.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 36.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 38.0,
+        "susceptibility": 0.15
+      },
+      {
+        "age": 40.0,
+        "susceptibility": 0.125
+      },
+      {
+        "age": 42.0,
+        "susceptibility": 0.1
+      },
+      {
+        "age": 44.0,
+        "susceptibility": 0.1
+      }
+    ],
+    "plateaus": [
+      {
+        "stage": "幼儿期",
+        "age_mid": 2.0,
+        "expected": 0.85,
+        "actual": 0.85,
+        "source": "caregiver"
+      },
+      {
+        "stage": "学前期",
+        "age_mid": 4.5,
+        "expected": 0.75,
+        "actual": 0.75,
+        "source": "caregiver"
+      },
+      {
+        "stage": "学龄期",
+        "age_mid": 9.0,
+        "expected": 0.5,
+        "actual": 0.5,
+        "source": "peer"
+      },
+      {
+        "stage": "青春期",
+        "age_mid": 15.0,
+        "expected": 0.28,
+        "actual": 0.28,
+        "source": "peer"
+      },
+      {
+        "stage": "成年早期",
+        "age_mid": 29.0,
+        "expected": 0.15,
+        "actual": 0.15,
+        "source": "partner"
+      },
+      {
+        "stage": "成年中期后",
+        "age_mid": 42.5,
+        "expected": 0.1,
+        "actual": 0.1,
+        "source": "self"
+      }
+    ],
+    "max_boundary_jump": 2.4999999999941735e-05,
+    "boundary_jumps": [
+      {
+        "boundary": 1.0,
+        "jump": 9.99999999995449e-06
+      },
+      {
+        "boundary": 3.0,
+        "jump": 9.99999999995449e-06
+      },
+      {
+        "boundary": 6.0,
+        "jump": 2.4999999999941735e-05
+      },
+      {
+        "boundary": 12.0,
+        "jump": 2.199999999996649e-05
+      },
+      {
+        "boundary": 18.0,
+        "jump": 1.299999999995749e-05
+      },
+      {
+        "boundary": 40.0,
+        "jump": 5.000000000157656e-06
+      }
+    ]
+  },
+  "e2": {
+    "per_stage": [
+      {
+        "stage": "学前期",
+        "age_range": [
+          3.0,
+          6.0
+        ],
+        "n_steps": 25,
+        "staged_openness": 0.7225000000000003,
+        "constant_openness": 0.5,
+        "openness_ratio": 1.4450000000000005,
+        "observed_ratio": 1.1282072511864818,
+        "staged_mean_influence": 0.009764860980197108,
+        "constant_mean_influence": 0.008655201400210704
+      },
+      {
+        "stage": "学龄期",
+        "age_range": [
+          6.0,
+          12.0
+        ],
+        "n_steps": 71,
+        "staged_openness": 0.5043427230046947,
+        "constant_openness": 0.5,
+        "openness_ratio": 1.0086854460093895,
+        "observed_ratio": 0.8334434066310807,
+        "staged_mean_influence": 0.017373034172657908,
+        "constant_mean_influence": 0.020844887648559907
+      },
+      {
+        "stage": "青春期",
+        "age_range": [
+          12.0,
+          18.0
+        ],
+        "n_steps": 72,
+        "staged_openness": 0.2874479166666661,
+        "constant_openness": 0.5,
+        "openness_ratio": 0.5748958333333322,
+        "observed_ratio": 0.02638697279498957,
+        "staged_mean_influence": 0.007436397880793206,
+        "constant_mean_influence": 0.2818208037189188
+      },
+      {
+        "stage": "成年早期",
+        "age_range": [
+          18.0,
+          40.0
+        ],
+        "n_steps": 133,
+        "staged_openness": 0.22041666666666562,
+        "constant_openness": 0.5,
+        "openness_ratio": 0.44083333333333125,
+        "observed_ratio": 0.016709293426440407,
+        "staged_mean_influence": 3.822638448555584e-05,
+        "constant_mean_influence": 0.0022877319531098353
+      }
+    ],
+    "ratios": [
+      1.1282072511864818,
+      0.8334434066310807,
+      0.02638697279498957,
+      0.016709293426440407
+    ],
+    "ratio_decreasing": true,
+    "weaker_when_openness_below_half": true,
+    "amplification": [
+      {
+        "stage": "学前期",
+        "openness_ratio": 1.4450000000000005,
+        "observed_ratio": 1.1282072511864818,
+        "amplification_factor": 1.2807930444343119
+      },
+      {
+        "stage": "学龄期",
+        "openness_ratio": 1.0086854460093895,
+        "observed_ratio": 0.8334434066310807,
+        "amplification_factor": 1.2102626740868545
+      },
+      {
+        "stage": "青春期",
+        "openness_ratio": 0.5748958333333322,
+        "observed_ratio": 0.02638697279498957,
+        "amplification_factor": 21.787108274977832
+      },
+      {
+        "stage": "成年早期",
+        "openness_ratio": 0.44083333333333125,
+        "observed_ratio": 0.016709293426440407,
+        "amplification_factor": 26.38252390946505
+      }
+    ]
+  },
+  "e3": {
+    "points": [
+      {
+        "strength": 0.0,
+        "mean_abs_deviation": 0.0,
+        "max_abs_deviation": 0.0,
+        "final_deviation": 0.0,
+        "paired_noise": 0.0,
+        "snr": 0.0,
+        "clamped_fraction": 0.0
+      },
+      {
+        "strength": 0.5,
+        "mean_abs_deviation": 0.04366734485667616,
+        "max_abs_deviation": 0.11365949007731929,
+        "final_deviation": 8.419064359462455e-07,
+        "paired_noise": 0.009081380926823306,
+        "snr": 4.808447658846431,
+        "clamped_fraction": 0.0
+      },
+      {
+        "strength": 1.0,
+        "mean_abs_deviation": 0.05338814765796933,
+        "max_abs_deviation": 0.14381716954961796,
+        "final_deviation": 1.0322764342022654e-06,
+        "paired_noise": 0.011666432436160216,
+        "snr": 4.576218818401782,
+        "clamped_fraction": 0.0
+      },
+      {
+        "strength": 2.0,
+        "mean_abs_deviation": 0.060232034298783814,
+        "max_abs_deviation": 0.1664074648815311,
+        "final_deviation": 1.1922210600701089e-06,
+        "paired_noise": 0.013687881038190153,
+        "snr": 4.400391421486802,
+        "clamped_fraction": 0.0
+      },
+      {
+        "strength": 4.0,
+        "mean_abs_deviation": 0.064430629517382,
+        "max_abs_deviation": 0.18128118644443045,
+        "final_deviation": 1.295096366972966e-06,
+        "paired_noise": 0.017268979423476563,
+        "snr": 3.7310038964891494,
+        "clamped_fraction": 0.0
+      },
+      {
+        "strength": 8.0,
+        "mean_abs_deviation": 0.07886143812830398,
+        "max_abs_deviation": 0.1863798652386285,
+        "final_deviation": 1.3909336792257883e-06,
+        "paired_noise": 0.2855680583489259,
+        "snr": 0.2761563691130535,
+        "clamped_fraction": 0.5011074197120708
+      },
+      {
+        "strength": 16.0,
+        "mean_abs_deviation": 0.09465863167070393,
+        "max_abs_deviation": 0.35304653190529517,
+        "final_deviation": 7.40993170618894e-07,
+        "paired_noise": 0.28105179905382155,
+        "snr": 0.33680137252057496,
+        "clamped_fraction": 0.5542635658914729
+      }
+    ],
+    "monotone": true,
+    "clean_upper_bound": 4.0,
+    "saturation_strength": null
+  },
+  "e4": {
+    "childhood": {
+      "n": 168,
+      "mean_deviation": 0.10963186436216049,
+      "max_deviation": 0.18128118644443045,
+      "signed_mean": 0.10963186436216049,
+      "paired_noise": 0.029295823140903107,
+      "snr": 3.742235329414296
+    },
+    "adulthood": {
+      "n": 133,
+      "mean_deviation": 0.0073343328713459995,
+      "max_deviation": 0.07803849323977917,
+      "signed_mean": 0.0073343328713459995,
+      "paired_noise": 0.002077176833043028,
+      "snr": 3.5309140534758083
+    },
+    "persists_into_adulthood": true,
+    "decay_ratio": 0.06689964559133639
+  },
+  "verdicts": [
+    {
+      "claim": "E1 易感性呈阶梯下降且边界连续",
+      "passed": true
+    },
+    {
+      "claim": "E2 效力随发展阶段单调递减",
+      "passed": true
+    },
+    {
+      "claim": "E2 易感性<0.50 的阶段影响更弱",
+      "passed": true
+    },
+    {
+      "claim": "E3 无钳位区间内剂量-反应单调",
+      "passed": true
+    },
+    {
+      "claim": "E3 效应显著高于配对噪声（信噪比>2）",
+      "passed": true
+    },
+    {
+      "claim": "E4 影响在成年后仍留痕（信噪比>1）",
+      "passed": true
+    }
+  ]
+}
