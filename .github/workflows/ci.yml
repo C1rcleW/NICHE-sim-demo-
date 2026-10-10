@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -96,3 +97,40 @@ jobs:
           # 同时必须从仓库外运行，否则 sys.path[0] 会让仓库源码冒充已安装副本。
           cd /tmp
           /tmp/clean/bin/python "$GITHUB_WORKSPACE/tools/verify_install.py" --import-only
+
+  release:
+    # 打 v* tag 时自动构建 wheel + sdist 并附加到对应的 GitHub Release。
+    # 这样发布流程不依赖本机环境，"v0.2.0 的产物由 v0.2.0 的提交构建"也可追溯。
+    # 正文不在此处设置：Release 标题与说明由仓库所有者在 GitHub 上填写，
+    # 避免自动覆盖人工润色的发布说明。
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: 发布产物（打 tag 时触发）
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 构建 wheel 与 sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: 校验产物版本号与 tag 一致
+        # tag 是 v0.1.0 而产物是 family_abm-0.2.0 这类不一致必须挡在这里，
+        # 否则会把版本号错误的产物发出去
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          ls dist/
+          for f in dist/*; do
+            case "$(basename "$f")" in
+              *"$TAG"*) ;;
+              *) echo "产物 $f 的版本号与 tag $GITHUB_REF_NAME 不一致"; exit 1 ;;
+            esac
+          done
+          echo "版本号校验通过：$TAG"
+      - name: 附到 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber

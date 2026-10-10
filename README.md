@@ -393,6 +393,12 @@ CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试
 ## 版本
 
 当前版本 **0.1.0**（首个公开版本）。变更历史见 [CHANGELOG.md](CHANGELOG.md)，
-发布产物见 [Releases](https://github.com/C1rcleW/NICHE-sim-Framework/releases)。
+发布产物见 [Releases](https://github.com/C1rcleW/NICHE-sim-Framework/releases)，
+本次发布说明见 [docs/release-notes-0.1.0.md](docs/release-notes-0.1.0.md)。
+
+引用本项目的规范格式见 [CITATION.cff](CITATION.cff)。
 
 `0.x` 阶段的 API 尚未稳定，次版本号可能包含不兼容改动。
+
+发布流程：更新版本号与 CHANGELOG → 打 `v*` tag 并推送 → CI 的 `release` job
+自动构建 wheel 与 sdist 并附加到对应 Release。
