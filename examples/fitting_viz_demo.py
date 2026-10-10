@@ -18,15 +18,17 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 
 def build_household(env: Environment, name: str, members: list[dict]) -> Household:
-    hh = Household(name=f"{name} Household")
+    hh = Household(name=f"{name} Household", environment=env)
     env.add_agent(hh)
     for cfg in members:
-        hh.add_member(FamilyMember(**cfg))
+        hh.add_member(FamilyMember(environment=env, **cfg))
     return hh
 
 
 def run_simulation(steps: int = 120) -> tuple[Simulation, StateRecorder]:
     env = Environment()
+    # 先建立随机数上下文，使整次仿真可复现
+    sim = Simulation(env, scheduler=Scheduler("sequential"), seed=42)
 
     # Household A — two parents, one child
     build_household(env, "Zhang", [
@@ -42,7 +44,6 @@ def run_simulation(steps: int = 120) -> tuple[Simulation, StateRecorder]:
     ])
 
     recorder = StateRecorder(record_agents=True)
-    sim = Simulation(env, scheduler=Scheduler("sequential"))
     sim.add_recorder(recorder)
     sim.run(steps)
     return sim, recorder

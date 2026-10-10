@@ -188,16 +188,45 @@ fastapi, uvicorn, jinja2, pydantic
 
 可选：`networkx`（家庭关系网络图，`pip install "family_abm[viz]"`）。
 Python 版本要求：`>=3.9`。
+
+---
+
+## 可复现性
+
+仿真支持注入随机种子，同一 seed 跨进程、跨机器结果一致：
+
+```python
+env = Environment()
+sim = Simulation(env, seed=42)        # 先注入 RNG，再构造智能体
+hh = Household(name="Smith", environment=env)
+env.add_agent(hh)
+hh.add_member(FamilyMember(name="Father", age=40, environment=env))
+```
+
+`seed` 会创建独立的 `random.Random(seed)` 并注入 `environment.rng`：既使仿真可复现，
+也不会干扰进程内其它地方对 `random` 的使用。
+
+> **构造顺序很重要**：智能体在构造期间就会抽取随机数（人格、初始状态），因此要把
+> `environment=env` 传给 `Household` 与 `FamilyMember`，否则它们会退回全局
+> `random`，带 seed 的仿真也就不再可复现。Web 仪表板的 `/api/run` 同样接受
+> `seed` 字段（默认 42）。
+
 ---
 
 ## 说明与限制
 
-- **仿真未固定随机种子**：同一组输入连续运行两次结果会不同。如需复现，请在构建环境前
-  自行设置 `random.seed()` 与 `np.random.seed()`。
+- **智能体之间尚无相互作用**：每个 `FamilyMember` 的状态演化只依赖自身状态与参数，
+  成员之间、家庭层与成员之间没有耦合。因此当前版本更接近"N 个独立的个体级
+  （微观）仿真共享一个环境"，而不是涌现意义上的 ABM。家庭层的 `Relationship`
+  与角色类目前不参与成员的状态更新。
 - **小生境空间维度不完整**：`social` 维度依赖 `social_capital`，目前只有 `Household` 拥有该状态；
   `economic` 直接取收入值，未做归一化。
 - **`FeatureExtractor` 的缺失值处理**：当前会用 0 填充，用于监督学习前请自行处理缺失。
-- **默认参数下的长期校准**：长时间仿真中健康会衰减到下限、压力趋于饱和。
+- **ODE 拟合的适用性**：`wellbeing` 模型在校准后的仿真数据上 R² 约 0.4，
+  说明该模型结构与 ABM 的状态动力学并不吻合；报告结果时请勿把 R² 当作模型正确性的证据。
+  此外 `wellbeing` 的 `p` 与 `income` 只以乘积 `p·income` 出现，二者无法分别确定。
+- **健康模型是渐近型**：健康朝下限（`health_floor`，默认 0.35）指数渐近并受年龄加速，
+  因此不会像早期版本那样在十多年内衰减到 0.01，但这是一个建模选择，尚无实证标定。
 - 仓库暂未附带 LICENSE 文件，使用前请与作者确认授权。
 
 ---

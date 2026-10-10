@@ -1,4 +1,5 @@
 from __future__ import annotations
+import random
 from typing import Any, Callable, Optional
 from .environment import Environment
 from .scheduler import Scheduler
@@ -10,6 +11,7 @@ class Simulation:
         environment: Environment,
         scheduler: Optional[Scheduler] = None,
         record_initial: bool = True,
+        seed: Optional[int] = None,
     ):
         """
         Parameters
@@ -24,13 +26,35 @@ class Simulation:
             ABM 输出缺基线时，拟合器会取 ``y_true[0]`` 当作初值（那其实是"走完
             第一步之后"的状态），导致整条轨迹相差一步。开启后时间轴为 ``[0..n]``，
             ``recorder`` 的第一行即可直接作为 ODE 的初值。
+        seed : int, optional
+            随机种子。给出时会创建独立的 ``random.Random(seed)`` 并注入
+            ``environment.rng``，使本次仿真可复现，且不扰动进程内其它随机数使用。
+
+            **推荐用法**：先建立随机数上下文，再构造智能体，这样连它们的初始化
+            随机数也来自这条独立流::
+
+                env = Environment()
+                sim = Simulation(env, seed=42)      # 先注入 RNG
+                hh = Household(name="Smith")
+                env.add_agent(hh)
+                hh.add_member(FamilyMember(name="Father", age=40))
+
+            若先构造智能体、后创建带 seed 的 Simulation，则初始化阶段用的是全局
+            ``random``，需自行 ``random.seed(...)`` 才能复现。
         """
         self.environment = environment
         self.scheduler = scheduler or Scheduler()
         self.record_initial = bool(record_initial)
+        self.seed = seed
         self.recorders: list[Any] = []
         self.hooks: dict[str, list[Callable]] = {"pre_step": [], "post_step": []}
         self.current_step = 0
+
+        if seed is not None:
+            environment.rng = random.Random(seed)
+        # 调度器与智能体必须共享同一条随机流，否则无法复现
+        self.scheduler.rng = environment.rng
+
         # 第一个 step 前（以及 reset 之后）需要补记基线
         self._needs_initial_recording = self.record_initial
 

@@ -15,6 +15,7 @@ const I18N = {
     'status.error': '错误',
     'setup.title': '仿真设置',
     'setup.steps': '步数',
+    'setup.seed': '随机种子',
     'setup.run': '运行仿真',
     'setup.results': '结果',
     'setup.agents': '成员',
@@ -87,6 +88,7 @@ const I18N = {
     'status.error': 'Error',
     'setup.title': 'Simulation Setup',
     'setup.steps': 'Steps',
+    'setup.seed': 'Random Seed',
     'setup.run': 'Run Simulation',
     'setup.results': 'Results',
     'setup.agents': 'Agents',
@@ -357,6 +359,8 @@ async function runSimulation() {
   setStatus('running', t('status.running'));
   const cfg = {
     steps: parseInt(document.getElementById('simSteps').value) || 120,
+    // 随机种子：同一配置 + 同一种子可复现（含智能体初始化）
+    seed: parseInt(document.getElementById('simSeed').value, 10),
     params: getParams(),
     families: getFamilyConfigs(),
   };

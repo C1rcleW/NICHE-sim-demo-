@@ -35,6 +35,9 @@ _last_fitter = None
 
 class SimConfig(BaseModel):
     steps: int = 120
+    # 随机种子：给出后同一配置可复现（含智能体初始化）。
+    # 默认 42 而非 None，使 Web 端默认行为可复现。
+    seed: Optional[int] = 42
     params: dict = {}
     families: list[dict] = [
         {'name': 'Smith', 'members': [
@@ -91,15 +94,17 @@ async def api_run(cfg: SimConfig):
 
     env = Environment()
     env.params = cfg.params
+    # 先建立随机数上下文：这样智能体初始化与后续演化都来自同一条可复现的随机流
+    sim = Simulation(env, scheduler=Scheduler('sequential'), seed=cfg.seed)
+
     for fam in cfg.families:
-        hh = Household(name=f"{fam['name']} Household")
+        hh = Household(name=f"{fam['name']} Household", environment=env)
         env.add_agent(hh)
         for m in fam['members']:
-            member = FamilyMember(**m)
+            member = FamilyMember(environment=env, **m)
             hh.add_member(member)
 
     recorder = StateRecorder(record_agents=True)
-    sim = Simulation(env, scheduler=Scheduler('sequential'))
     sim.add_recorder(recorder)
     sim.run(cfg.steps)
 
@@ -109,6 +114,7 @@ async def api_run(cfg: SimConfig):
     return JSONResponse({
         'status': 'ok',
         'steps': cfg.steps,
+        'seed': cfg.seed,
         'agents': len(env.agents),
         'observations': len(_sim_df),
     })

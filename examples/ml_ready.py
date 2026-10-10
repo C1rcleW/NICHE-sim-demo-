@@ -11,16 +11,18 @@ from family_abm import (
 
 
 def create_family(env: Environment, name: str, members_config: list[dict]) -> Household:
-    hh = Household(name=f"{name} Household")
+    hh = Household(name=f"{name} Household", environment=env)
     env.add_agent(hh)
     for cfg in members_config:
-        member = FamilyMember(**cfg)
+        member = FamilyMember(environment=env, **cfg)
         hh.add_member(member)
     return hh
 
 
 def main():
     env = Environment()
+    # 先建立随机数上下文，使整次仿真（含成员初始化）可复现
+    sim = Simulation(env, scheduler=Scheduler("random"), seed=42)
 
     # Create two households
     create_family(env, "Smith", [
@@ -42,7 +44,6 @@ def main():
             niches[agent.id] = n
 
     recorder = StateRecorder(record_agents=True)
-    sim = Simulation(env, scheduler=Scheduler("random"))
     sim.add_recorder(recorder)
 
     sim.run(steps=240)

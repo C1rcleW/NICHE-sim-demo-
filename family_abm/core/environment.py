@@ -1,15 +1,28 @@
 from __future__ import annotations
+import random
 from typing import Any, Optional
 from .agent import Agent
 
 
 class Environment:
+    """智能体的容器与共享上下文。
+
+    除注册智能体外，它还承载两类共享状态：
+
+    - ``params``：动力学参数（`FamilyMember._p()` 会读取，缺省时回退到 DEFAULT_PARAMS）
+    - ``rng``：随机数发生器。默认是全局 ``random`` 模块；当由 :class:`Simulation`
+      以 ``seed`` 创建时会换成独立实例，使仿真可复现且不影响进程内的其它随机数使用。
+      智能体与关系应通过 ``environment.rng`` 取随机数，而不是直接调用全局 ``random``。
+    """
+
     def __init__(self, width: int = 100, height: int = 100):
         self.agents: dict[str, Agent] = {}
         self.time: int = 0
         self.width = width
         self.height = height
         self.properties: dict[str, Any] = {}
+        self.params: dict[str, float] = {}
+        self.rng: Any = random
 
     def add_agent(self, agent: Agent, x: Optional[float] = None, y: Optional[float] = None) -> None:
         self.agents[agent.id] = agent

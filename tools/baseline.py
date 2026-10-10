@@ -2,7 +2,8 @@
 
 用途（P0-3）：
 - 任何"校准/结构"改动之后，用 `--check` 对比基线，把不可见的行为变化显式暴露出来；
-- 在 P2 引入真正的 RNG 注入之前，先用 `random.seed()` 达到"同一脚本可复现"。
+- 仿真通过 `Simulation(seed=...)` 注入独立 RNG（0.2.0 起），因此同一 seed
+  跨进程、跨机器都可复现，无需调用方手动播种全局 `random`。
 
 用默认模型参数（DEFAULT_PARAMS）与默认家庭结构，保证跨机器可复现。
 
@@ -21,7 +22,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
 import sys
 from pathlib import Path
 
@@ -42,13 +42,13 @@ DEFAULT_FAMILIES = [
 ]
 
 
-def build_environment() -> Environment:
-    env = Environment()
+def build_environment(env: Environment) -> Environment:
     for household_name, members in DEFAULT_FAMILIES:
-        household = Household(name=f"{household_name} Household")
+        household = Household(name=f"{household_name} Household", environment=env)
         env.add_agent(household)
         for name, age, gender, role_name in members:
-            household.add_member(FamilyMember(name=name, age=age, gender=gender, role_name=role_name))
+            household.add_member(FamilyMember(name=name, age=age, gender=gender,
+                                              role_name=role_name, environment=env))
     return env
 
 
@@ -84,11 +84,11 @@ def collect_stats(recorder: StateRecorder) -> dict:
 
 
 def run(seed: int, steps: int) -> dict:
-    random.seed(seed)
-    np.random.seed(seed)
-    env = build_environment()
+    env = Environment()
+    # 先注入 RNG，再建智能体：这样初始化与演化都来自同一条可复现随机流
+    sim = Simulation(env, scheduler=Scheduler("sequential"), seed=seed)
+    build_environment(env)
     recorder = StateRecorder(record_agents=True)
-    sim = Simulation(env, scheduler=Scheduler("sequential"))
     sim.add_recorder(recorder)
     sim.run(steps)
     return collect_stats(recorder)

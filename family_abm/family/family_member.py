@@ -7,17 +7,26 @@ from ..core.agent import Agent
 PERSONALITY_DIMENSIONS = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"]
 
 # ── Default simulation parameters ──────────────────────────────────────────
+#
+# 量级说明（0.2.0 校准）：
+#   health_* —— 月度衰减。base + age*age_coef 在 40 岁时约 1.1e-3/月 ≈ 1.3%/年，
+#               使健康状况在数十年的仿真尺度上缓慢下降而不是触底；
+#               旧值 (0.002 + 0.00015·age) 在 40 岁时约 6.8e-3/月 ≈ 7.8%/年，
+#               会在约 10 年内把健康打到下限 0.01。
+#   stress_* —— 压力按"朝均衡点松弛"演化，均衡值 = (base + work)·(1 + sens·neuro) / decay。
+#               默认参数下成年人 ≈ 0.31、儿童 ≈ 0.17，保证神经质人格在整个区间内
+#               都能产生可分辨的差异（旧参数均衡值 > 1 会被钳位饱和）。
 DEFAULT_PARAMS: dict[str, float] = {
     "education_rate": 0.008,
     "income_base": 0.10,
     "income_edu_boost": 0.40,
     "income_age_peak": 45,
     "income_age_spread": 18,
-    "health_decay_base": 0.002,
-    "health_decay_age": 0.00015,
+    "health_floor": 0.35,
+    "health_decay_rate": 0.0020,
     "health_edu_protection": 0.30,
-    "stress_base": 0.03,
-    "stress_work_add": 0.02,
+    "stress_base": 0.012,
+    "stress_work_add": 0.008,
     "stress_decay": 0.06,
     "stress_neuro_sensitivity": 0.30,
     "happiness_baseline": 0.35,
@@ -38,25 +47,58 @@ class FamilyMember(Agent):
         gender: str = "other",
         personality: Optional[dict[str, float]] = None,
         role_name: str = "adult",
+        environment: Optional[Any] = None,
         **kwargs,
     ):
+        """家庭成员智能体。
+
+        Parameters
+        ----------
+        environment : Environment, optional
+            所属环境。**传入后初始化随机数才来自该环境的 RNG**（即
+            ``Simulation(seed=...)`` 注入的独立随机流）。
+
+            若不传，成员在自身构造期间 ``self.environment`` 仍为 ``None``
+            （要等 ``Household.add_member()`` 把它注册进环境才设置），
+            此时初始化会退回全局 ``random``，导致带 seed 的仿真**不可复现**。
+            推荐写法::
+
+                env = Environment()
+                sim = Simulation(env, seed=42)
+                hh = Household(name="Smith", environment=env)
+                env.add_agent(hh)
+                hh.add_member(FamilyMember(name="Father", age=40, environment=env))
+        """
         super().__init__(**kwargs)
+        if environment is not None:
+            self.environment = environment
+        rng = self._rng()
         self.set_attribute("name", name)
         self.set_attribute("age", age)
         self.set_attribute("gender", gender)
         self.set_attribute("personality", personality or {
-            k: max(0.0, min(1.0, random.gauss(0.5, 0.15))) for k in PERSONALITY_DIMENSIONS
+            k: max(0.0, min(1.0, rng.gauss(0.5, 0.15))) for k in PERSONALITY_DIMENSIONS
         })
         self.set_attribute("role", role_name)
 
-        self.set_state_value("health", max(0.3, min(1.0, 1.0 - age * 0.003 + random.gauss(0, 0.05))))
-        self.set_state_value("happiness", random.uniform(0.4, 0.7))
-        self.set_state_value("stress", random.uniform(0.15, 0.4))
-        self.set_state_value("energy", random.uniform(0.6, 1.0))
-        self.set_state_value("education", max(0.0, min(1.0, age * 0.012 + random.gauss(0, 0.05))))
+        self.set_state_value("health", max(0.3, min(1.0, 1.0 - age * 0.003 + rng.gauss(0, 0.05))))
+        self.set_state_value("happiness", rng.uniform(0.4, 0.7))
+        self.set_state_value("stress", rng.uniform(0.15, 0.4))
+        self.set_state_value("energy", rng.uniform(0.6, 1.0))
+        self.set_state_value("education", max(0.0, min(1.0, age * 0.012 + rng.gauss(0, 0.05))))
         self.set_state_value("income", 0.0)
 
     # ── Helpers ──────────────────────────────────────────────────────────
+
+    def _rng(self) -> Any:
+        """取随机数发生器：优先用环境注入的独立实例，否则回退全局 ``random``。
+
+        由 ``Simulation(seed=...)`` 注入的 RNG 使仿真可复现；直接使用全局
+        ``random`` 时调用方需自行播种。
+        """
+        env = self.environment
+        rng = getattr(env, "rng", None) if env is not None else None
+        return rng if rng is not None else random
 
     def _p(self, key: str, default: float = 0.0) -> float:
         """Read a parameter from environment config, with fallback."""
@@ -83,7 +125,7 @@ class FamilyMember(Agent):
         age = self.get_attribute("age")
         role = self.get_attribute("role")
         personality = self.get_attribute("personality")
-        rng = random.gauss
+        rng = self._rng().gauss
 
         dt_months = self._p("dt_months", 1.0)
         noise = self._p("randomness", 0.02)
@@ -110,19 +152,30 @@ class FamilyMember(Agent):
         income += rng(0, noise * base)
         self.set_state_value("income", max(0.0, income))
 
-        # ── Health (decays with age, buffered by education) ──
+        # ── Health (decays toward a floor, accelerated by age, buffered by education) ──
+        #
+        # 结构说明（0.2.0 重写）：
+        #   纯线性衰减没有下界，长时间仿真必然把健康压到 0.01 —— 等于用"死亡"代替
+        #   "衰老"，健康维度会失去区分度。改为朝下限渐近：
+        #       h ← floor + (h - floor) · exp(-k·dt)，
+        #   k = rate · edu_factor · age_factor，其中 age_factor = max(1, age/50)²
+        #   表达"年龄越大衰减越快"。这样既有年龄曲线，又不会无限下坠。
+        #
+        #   同时 edu_protect 作用在**总衰减**上（旧实现只乘在年龄项，教育几乎无效果）。
         hp = self.get_state_value("health")
-        base_decay = self._p("health_decay_base", 0.002)
-        age_decay = self._p("health_decay_age", 0.00015) * age
-        edu_protect = self._p("health_edu_protection", 0.30) * edu
-        hp_change = -(base_decay + age_decay * (1 - edu_protect)) * dt_months
-        hp_change += rng(0, noise * 0.3)
-        self.set_state_value("health", max(0.01, min(1.0, hp + hp_change)))
+        floor = self._p("health_floor", 0.35)
+        rate = self._p("health_decay_rate", 0.0020)
+        age_factor = max(1.0, age / 50.0) ** 2
+        edu_protect = min(1.0, self._p("health_edu_protection", 0.30) * edu)
+        k = rate * age_factor * (1 - edu_protect)
+        hp = floor + (hp - floor) * math.exp(-k * dt_months)
+        hp += rng(0, noise * 0.3)
+        self.set_state_value("health", max(0.01, min(1.0, hp)))
 
-        # ── Stress (base + role burden, decay) ──
+        # ── Stress (relaxes toward an equilibrium, scaled by neuroticism) ──
         st = self.get_state_value("stress")
-        st_base = self._p("stress_base", 0.03)
-        st_work = self._p("stress_work_add", 0.02) if role in ("adult", "student") else 0.005
+        st_base = self._p("stress_base", 0.012)
+        st_work = self._p("stress_work_add", 0.008) if role in ("adult", "student") else 0.005
         st_decay = self._p("stress_decay", 0.06)
         neuro = personality.get("neuroticism", 0.5)
         neuro_sens = self._p("stress_neuro_sensitivity", 0.30)

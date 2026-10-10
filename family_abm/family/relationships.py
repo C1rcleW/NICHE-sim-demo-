@@ -9,16 +9,19 @@ class Relationship:
         agent_a_id: str,
         agent_b_id: str,
         relation_type: str = "generic",
+        rng: Any = None,
     ):
         self.agent_a_id = agent_a_id
         self.agent_b_id = agent_b_id
         self.relation_type = relation_type
+        # 由 Household 传入环境注入的 RNG；单独使用本类时回退全局 random
+        self.rng = rng if rng is not None else random
 
-        self.affection: float = random.uniform(0.3, 0.8)
-        self.trust: float = random.uniform(0.3, 0.8)
+        self.affection: float = self.rng.uniform(0.3, 0.8)
+        self.trust: float = self.rng.uniform(0.3, 0.8)
         self.power_dynamics: float = 0.5
-        self.communication_quality: float = random.uniform(0.3, 0.7)
-        self.conflict: float = random.uniform(0.0, 0.3)
+        self.communication_quality: float = self.rng.uniform(0.3, 0.7)
+        self.conflict: float = self.rng.uniform(0.0, 0.3)
 
     def get_other_id(self, agent_id: str) -> str:
         return self.agent_b_id if agent_id == self.agent_a_id else self.agent_a_id
@@ -29,9 +32,9 @@ class Relationship:
         return self.trust * 0.4 + power * 0.4 + self.affection * 0.2
 
     def update_dynamics(self) -> None:
-        self.affection = max(0.0, min(1.0, self.affection + random.uniform(-0.02, 0.02)))
-        self.trust = max(0.0, min(1.0, self.trust + random.uniform(-0.01, 0.01)))
-        self.conflict = max(0.0, min(1.0, self.conflict + random.uniform(-0.01, 0.01)))
+        self.affection = max(0.0, min(1.0, self.affection + self.rng.uniform(-0.02, 0.02)))
+        self.trust = max(0.0, min(1.0, self.trust + self.rng.uniform(-0.01, 0.01)))
+        self.conflict = max(0.0, min(1.0, self.conflict + self.rng.uniform(-0.01, 0.01)))
 
     def get_state(self) -> dict[str, Any]:
         return {

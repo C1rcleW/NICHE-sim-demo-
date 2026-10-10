@@ -159,6 +159,7 @@ def test_pyproject_does_not_claim_a_license_that_is_missing() -> None:
 @pytest.fixture(scope="module")
 def built_dist(tmp_path_factory: pytest.TempPathFactory) -> dict:
     """在源码树拷贝上构建 wheel、隔离安装；构建工具缺失则 skip。"""
+    preexisting = {name for name in ("build", "dist", "family_abm.egg-info") if (REPO_ROOT / name).exists()}
     stage = _stage_sources(tmp_path_factory.mktemp("src"))
     out_dir = tmp_path_factory.mktemp("dist")
     wheel_result = _run([sys.executable, "-m", "build", "--wheel", "--outdir", str(out_dir), str(stage)])
@@ -178,20 +179,25 @@ def built_dist(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     if install_result.returncode != 0:
         pytest.skip(f"pip install --target 失败（可能是环境限制）：{(install_result.stderr or '')[-500:]}")
-    return {"wheel": wheel, "target": target, "stage": stage}
+    return {"wheel": wheel, "target": target, "stage": stage, "preexisting": preexisting}
 
 
 def test_build_does_not_pollute_repository(built_dist: dict) -> None:
-    """构建必须在临时拷贝里进行，不得在仓库根产生 build/ 或 *.egg-info。"""
+    """构建必须在临时拷贝里进行，不得在仓库根**新增**构建产物。
+
+    只检测"相对于构建前新增"的产物：``pip install -e .`` 本身就会在仓库根留下
+    ``family_abm.egg-info/``（可编辑安装的正常副产物，且已被 .gitignore 覆盖），
+    因此不能把预先存在的目录算作本次构建的污染。
+    """
     stage = built_dist["stage"]
     assert stage != REPO_ROOT, "构建不应直接以仓库根为源"
     assert (stage / "pyproject.toml").is_file(), "临时拷贝缺少构建输入"
 
-    # 临时拷贝里出现 build/ 是 setuptools 的正常行为，关键是它不在仓库里
-    for artifact in ("build", "dist", "family_abm.egg-info"):
-        assert not (REPO_ROOT / artifact).exists(), (
-            f"仓库根出现了构建产物 {artifact}/ —— 构建过程污染了工作区"
-        )
+    # 临时拷贝里出现 build/ 是 setuptools 的正常行为，关键是仓库里没有新增
+    appeared = [name for name in ("build", "dist", "family_abm.egg-info")
+                if (REPO_ROOT / name).exists() and name not in built_dist["preexisting"]]
+    assert not appeared, f"本次构建在仓库根新增了产物：{appeared}"
+
     assert (stage / "build").exists() or (stage / "family_abm.egg-info").exists(), (
         "未在临时拷贝中观察到构建产物，说明构建可能没有真正发生"
     )

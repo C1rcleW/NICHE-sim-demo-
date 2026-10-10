@@ -830,13 +830,39 @@ def test_converged_reflects_optimizer_state_not_bound_hits() -> None:
 
 
 def test_high_r_squared_fit_is_not_reported_as_unconverged() -> None:
-    """真实数据上的高 R² 拟合必须被判定为已收敛（此前贴边误判使 R²=0.97 报 False）。"""
-    recorder, _ = build_recorder(record_initial=True, steps=120)
-    df = recorder.to_dataframe()
-    fitter = make_fitter("wellbeing")
-    fitter.fit_from_dataframe(df)
+    """高 R² 的拟合必须被判为已收敛（此前"参数贴边"误判使 R²=0.97 也报 False）。
+
+    用 **wellbeing 模型自身生成的轨迹**作为数据：这样 R² 确实很高，
+    测试只检验"收敛判定"，不依赖 ABM 数据是否恰好符合该 ODE 的结构。
+
+    （说明：真实 ABM 数据在 0.2.0 校准后不再被 wellbeing 模型良好拟合——
+      R² 约 0.43，这反映的是模型结构差异，不是收敛判定问题。）
+    """
+    from scipy.integrate import solve_ivp
+
+    from family_abm.fitting.lanchester import wellbeing_balance
+
+    true_params = [1.0, 0.6, 0.5, 0.4, 0.5]
+    t = np.arange(0.0, 120.0, 1.0)
+    solution = solve_ivp(lambda tt, y: wellbeing_balance(tt, y, *true_params),
+                         [t[0], t[-1]], [0.5, 0.3], t_eval=t, method="RK45",
+                         rtol=1e-10, atol=1e-12)
+    assert solution.success
+
+    df = pd.DataFrame({
+        "time": t,
+        "agent_id": "synthetic",
+        "state_synthetic_happiness": solution.y[0],
+        "state_synthetic_stress": solution.y[1],
+    })
+    fitter = make_fitter(
+        "wellbeing",
+        state_mapping={"happiness": "state_synthetic_happiness", "stress": "state_synthetic_stress"},
+    )
+    fitter.fit_from_dataframe(df, bounds=[(1e-4, 5.0)] * 5)
     summary = fitter.summary_json()
-    assert summary["r_squared"] > 0.8, summary["r_squared"]
+
+    assert summary["r_squared"] > 0.95, f"模型自生成数据应能高度拟合，实际 R²={summary['r_squared']}"
     assert summary["converged"] is True, (
         f"R²={summary['r_squared']} 的高质量拟合被判为未收敛；贴边参数={summary['params_at_bounds']}"
     )

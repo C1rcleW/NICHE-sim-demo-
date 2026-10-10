@@ -9,14 +9,16 @@ from family_abm import (
 
 def main():
     env = Environment()
+    # 先建立随机数上下文（seed），这样智能体初始化与后续演化都来自同一条可复现的随机流
+    sim = Simulation(env, scheduler=Scheduler("sequential"), seed=42)
 
-    household = Household(name="Smith Family")
+    household = Household(name="Smith Family", environment=env)
     env.add_agent(household)
 
-    father = FamilyMember(name="Dad", age=40, gender="male", role_name="parent")
-    mother = FamilyMember(name="Mom", age=38, gender="female", role_name="parent")
-    son = FamilyMember(name="Son", age=10, gender="male", role_name="child")
-    daughter = FamilyMember(name="Daughter", age=8, gender="female", role_name="child")
+    father = FamilyMember(name="Dad", age=40, gender="male", role_name="parent", environment=env)
+    mother = FamilyMember(name="Mom", age=38, gender="female", role_name="parent", environment=env)
+    son = FamilyMember(name="Son", age=10, gender="male", role_name="child", environment=env)
+    daughter = FamilyMember(name="Daughter", age=8, gender="female", role_name="child", environment=env)
 
     household.add_member(father)
     household.add_member(mother)
@@ -24,7 +26,6 @@ def main():
     household.add_member(daughter)
 
     recorder = StateRecorder(record_agents=True)
-    sim = Simulation(env, scheduler=Scheduler("sequential"))
     sim.add_recorder(recorder)
 
     sim.run(steps=120)
