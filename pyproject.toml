@@ -7,7 +7,10 @@ name = "family_abm"
 version = "0.2.0"
 description = "Family social micro-niche agent-based modeling framework with Lanchester-type ODE fitting and a FastAPI dashboard"
 readme = "README.md"
-requires-python = ">=3.9"
+# 最低 3.10：Pydantic 在**类创建时**求值注解（不像普通注解那样被
+# `from __future__ import annotations` 延迟），因此 `int | None` 这类写法
+# 需要运行时的 `|` 支持。Python 3.9 已于 2025-10 终止支持，不再兼容。
+requires-python = ">=3.10"
 authors = [{ name = "C1rcleW" }]
 keywords = ["agent-based-model", "computational-social-science", "social-niche", "ode", "simulation"]
 license = "MIT"
@@ -20,7 +23,6 @@ classifiers = [
     # 拒绝（License classifiers have been superseded by license expressions）。
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -68,15 +70,17 @@ Issues = "https://github.com/C1rcleW/NICHE-sim-demo-/issues"
 #   RUF012 测试与示例里的类属性默认值不需要 ClassVar 标注
 #   BLE001 顶层兜底 except Exception 是本项目刻意的设计（见 fitter / web/app.py）
 #   PLW0602 模块级单例的 global 声明
+#   E402  experiments/ 与 tools/ 下的脚本需要先插入 sys.path 再导入本项目，
+#         因此模块级导入必须排在 sys.path 操作之后
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 110
 
 # 显式列出规则集，而不是依赖 ruff 的默认全集：
 # 默认集会随版本变化（0.15 → 0.17 让本项目多出 179 项），显式声明才能稳定。
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["E501", "E701", "RUF001", "RUF002", "RUF003", "RUF012", "BLE001", "PLW0602"]
+ignore = ["E501", "E701", "E402", "RUF001", "RUF002", "RUF003", "RUF012", "BLE001", "PLW0602"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

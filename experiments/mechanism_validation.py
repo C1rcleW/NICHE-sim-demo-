@@ -31,7 +31,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from family_abm import (  # noqa: E402
+import itertools
+
+from family_abm import (
     Environment,
     FamilyMember,
     Household,
@@ -39,7 +41,7 @@ from family_abm import (  # noqa: E402
     Simulation,
     StateRecorder,
 )
-from family_abm.family.influence import ADULTHOOD_AGE, ERIKSON_STAGES, susceptibility  # noqa: E402
+from family_abm.family.influence import ADULTHOOD_AGE, ERIKSON_STAGES, susceptibility
 
 # ── 配置 ────────────────────────────────────────────────────────────────────
 
@@ -133,7 +135,7 @@ def e1_susceptibility_staircase() -> dict:
     return {
         "monotone_violations": violations,
         "curve_samples": [{"age": float(a), "susceptibility": float(v)}
-                          for a, v in zip(ages[::8], curve[::8])],
+                          for a, v in zip(ages[::8], curve[::8], strict=False)],
         "plateaus": plateaus,
         "max_boundary_jump": max(j["jump"] for j in jumps),
         "boundary_jumps": jumps,
@@ -248,7 +250,7 @@ def e2_stage_profile(seeds: list[int], strength: float, extra_params: dict | Non
         "per_stage": per_stage,
         "ratios": ratios,
         # 判据 1：效力随发展阶段单调下降
-        "ratio_decreasing": all(b <= a * 1.05 + 1e-9 for a, b in zip(ratios, ratios[1:])),
+        "ratio_decreasing": all(b <= a * 1.05 + 1e-9 for a, b in itertools.pairwise(ratios)),
         # 判据 2：易感性低于 0.50 的阶段，影响确实弱于恒定设定
         "weaker_when_openness_below_half": bool(
             weakening and all(row["observed_ratio"] < 1.0 for row in weakening)
@@ -286,7 +288,7 @@ def e3_dose_response(seeds: list[int], strengths: list[float],
                                         "role_switch": 1.0,
                                         **(extra_params or {})})
         paired = []
-        for base_series, treat_series in zip(baseline_by_seed, ensemble["child_happiness"]):
+        for base_series, treat_series in zip(baseline_by_seed, ensemble["child_happiness"], strict=False):
             length = min(len(base_series), len(treat_series))
             if length == 0:
                 continue
@@ -324,7 +326,7 @@ def e3_dose_response(seeds: list[int], strengths: list[float],
     # 不是机制本身的性质。
     clean = [p for p in points if p["clamped_fraction"] < 0.01]
     clean_deviations = [p["mean_abs_deviation"] for p in clean]
-    monotone_clean = all(b >= a - 1e-9 for a, b in zip(clean_deviations, clean_deviations[1:]))
+    monotone_clean = all(b >= a - 1e-9 for a, b in itertools.pairwise(clean_deviations))
     return {
         "points": points,
         "monotone": bool(monotone_clean),
@@ -356,7 +358,7 @@ def e4_lagged_effect(seeds: list[int], strength: float,
 
     ages = stack_mean(full["child_age"])
     paired = []
-    for base_series, treat_series in zip(none["child_happiness"], full["child_happiness"]):
+    for base_series, treat_series in zip(none["child_happiness"], full["child_happiness"], strict=False):
         length = min(len(base_series), len(treat_series), len(ages))
         if length == 0:
             continue
@@ -431,7 +433,7 @@ def main(argv=None) -> int:
     report["e2"] = e2
     print(f"  {'阶段':<10}{'年龄区间':>12}{'步数':>6}{'易感性':>9}"
           f"{'易感性比':>10}{'效力比':>10}{'放大倍数':>11}")
-    for row, amp in zip(e2["per_stage"], e2["amplification"]):
+    for row, amp in zip(e2["per_stage"], e2["amplification"], strict=False):
         age_range = f"{row['age_range'][0]:.0f}-{row['age_range'][1]:.0f}"
         factor = amp["amplification_factor"]
         factor_text = f"{factor:.2f}" if factor else "—"
@@ -505,7 +507,7 @@ def main(argv=None) -> int:
 
 def _is_decreasing(values: list[float]) -> bool:
     """允许微小噪声的递减判定。"""
-    return all(b <= a * 1.05 + 1e-9 for a, b in zip(values, values[1:]))
+    return all(b <= a * 1.05 + 1e-9 for a, b in itertools.pairwise(values))
 
 
 def _plot(report: dict, path: Path) -> None:

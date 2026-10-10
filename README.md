@@ -1,7 +1,7 @@
 # Family ABM — 家庭社会小生境智能体建模框架
 
 [![CI](https://github.com/C1rcleW/NICHE-sim-demo-/actions/workflows/ci.yml/badge.svg)](https://github.com/C1rcleW/NICHE-sim-demo-/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Code style](https://img.shields.io/badge/lint-ruff-000000)](https://github.com/astral-sh/ruff)
 
@@ -293,7 +293,8 @@ fastapi, uvicorn, jinja2, pydantic
 ```
 
 可选：`networkx`（家庭关系网络图，`pip install "family_abm[viz]"`）。
-Python 版本要求：`>=3.9`。
+Python 版本要求：`>=3.10`（Python 3.9 已于 2025-10 终止支持；Pydantic 在类创建时
+求值注解，`X | None` 这类写法需要运行时的 `|` 支持）。
 
 ---
 
@@ -358,7 +359,7 @@ python tools/baseline.py --out baseline/default_seed42.json
 python tools/build_research_doc.py
 ```
 
-CI 在 Python 3.9 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试，
+CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试，
 并额外做一次"构建 wheel → 干净环境安装 → 冒烟验证"。
 
 **改动的两条约定**：

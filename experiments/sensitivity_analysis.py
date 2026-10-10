@@ -42,7 +42,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 # 复用机制验证实验的仿真与度量，避免两套实现漂移
-from experiments.mechanism_validation import (  # noqa: E402
+from experiments.mechanism_validation import (
     STEPS,
     e2_stage_profile,
     e3_dose_response,

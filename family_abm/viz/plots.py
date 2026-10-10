@@ -287,7 +287,7 @@ def plot_fit_diagnostics(
 
     fig, axes = plt.subplots(1, n_states, figsize=figsize, squeeze=False)
 
-    for i, (ax, sn) in enumerate(zip(axes[0], state_names)):
+    for i, (ax, sn) in enumerate(zip(axes[0], state_names, strict=False)):
         ax.plot(t, y_true[:, i], "o", ms=4, label="ABM data", alpha=0.6)
         ax.plot(t_pred, y_pred[i], "-", lw=2, label="ODE fit")
         ax.set_xlabel("Time step")

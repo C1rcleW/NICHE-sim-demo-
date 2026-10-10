@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -308,7 +309,7 @@ class ABMFitter:
                 lower = np.repeat(lower, n)
             if upper.size == 1:
                 upper = np.repeat(upper, n)
-            return [(float(lo), float(hi)) for lo, hi in zip(lower, upper)]
+            return [(float(lo), float(hi)) for lo, hi in zip(lower, upper, strict=False)]
         pairs = [(float(lo), float(hi)) for lo, hi in bounds]
         if len(pairs) != n:
             raise ValueError(f'边界数量 ({len(pairs)}) 与参数数量 ({n}) 不一致')
@@ -316,7 +317,7 @@ class ABMFitter:
 
     def _save_result(self, result: Any, y_true: np.ndarray, t: np.ndarray) -> None:
         self.fitted_params_ = result.x
-        self.fitted_param_dict = dict(zip(self.param_names, result.x))
+        self.fitted_param_dict = dict(zip(self.param_names, result.x, strict=False))
         self.fit_result = result
 
         # 上报**未截断**的真实 R²（允许为负）。
@@ -333,7 +334,7 @@ class ABMFitter:
         边界），因此它表示"该方向可能不可辨识或边界不合适"，而不是"拟合不可用"。
         """
         hit: list[str] = []
-        for name, value, (lower, upper) in zip(self.param_names, params, self.bounds or []):
+        for name, value, (lower, upper) in zip(self.param_names, params, self.bounds or [], strict=False):
             if abs(float(value) - float(lower)) <= tol or abs(float(value) - float(upper)) <= tol:
                 hit.append(str(name))
         return hit

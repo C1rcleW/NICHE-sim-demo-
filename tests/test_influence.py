@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from family_abm import Environment, FamilyMember, Household, Scheduler, Simulation, StateRecorder
@@ -34,7 +36,7 @@ def test_susceptibility_is_monotone_non_increasing_in_age() -> None:
     """易感性必须随年龄单调不增，不能出现"长大反而更易受影响"。"""
     ages = [i * 0.25 for i in range(0, 81 * 4)]
     values = [susceptibility(age) for age in ages]
-    for earlier, later in zip(values, values[1:]):
+    for earlier, later in itertools.pairwise(values):
         assert later <= earlier + 1e-12, "易感性随年龄上升，与阶段理论不符"
 
 
@@ -91,7 +93,7 @@ def test_susceptibility_scale_preserves_shape_and_monotonicity() -> None:
     for scale in (0.70, 0.85, 1.15, 1.30):
         ages = [i * 0.25 for i in range(0, 200)]
         values = [susceptibility(age, scale=scale) for age in ages]
-        assert all(b <= a + 1e-12 for a, b in zip(values, values[1:])), (
+        assert all(b <= a + 1e-12 for a, b in itertools.pairwise(values)), (
             f"scale={scale} 破坏单调性"
         )
         assert min(values) >= 0.0 and max(values) <= 1.0, f"scale={scale} 越界"
@@ -114,7 +116,7 @@ def test_stage_shift_moves_boundaries() -> None:
     for shift in (-3.0, -2.0, 2.0, 3.0):
         ages = [i * 0.25 for i in range(0, 240)]
         values = [susceptibility(age, shift=shift) for age in ages]
-        assert all(b <= a + 1e-12 for a, b in zip(values, values[1:])), (
+        assert all(b <= a + 1e-12 for a, b in itertools.pairwise(values)), (
             f"shift={shift} 破坏单调性"
         )
 
