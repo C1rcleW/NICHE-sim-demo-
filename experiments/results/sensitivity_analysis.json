@@ -1,0 +1,1785 @@
+{
+  "seeds": [
+    1000,
+    1001,
+    1002
+  ],
+  "steps": 300,
+  "runs": [],
+  "p1": [
+    {
+      "shift": -3.0,
+      "scale": 0.7,
+      "monotone_violations": 0,
+      "max_boundary_jump": 1.7499999999948113e-05,
+      "max_susceptibility": 0.5599999999999999,
+      "min_susceptibility": 0.06999999999999999,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.85,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.124999999997268e-05,
+      "max_susceptibility": 0.68,
+      "min_susceptibility": 0.085,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.0,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.4999999999941735e-05,
+      "max_susceptibility": 0.8,
+      "min_susceptibility": 0.1,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.15,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.874999999991079e-05,
+      "max_susceptibility": 0.9199999999999999,
+      "min_susceptibility": 0.11499999999999999,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.3,
+      "monotone_violations": 0,
+      "max_boundary_jump": 3.249999999987985e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.13,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.7,
+      "monotone_violations": 0,
+      "max_boundary_jump": 1.7499999999948113e-05,
+      "max_susceptibility": 0.595,
+      "min_susceptibility": 0.06999999999999999,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.85,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.124999999997268e-05,
+      "max_susceptibility": 0.7224999999999999,
+      "min_susceptibility": 0.085,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.0,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.4999999999941735e-05,
+      "max_susceptibility": 0.85,
+      "min_susceptibility": 0.1,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.15,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.874999999991079e-05,
+      "max_susceptibility": 0.9774999999999999,
+      "min_susceptibility": 0.11499999999999999,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.3,
+      "monotone_violations": 0,
+      "max_boundary_jump": 3.249999999987985e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.13,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.7,
+      "monotone_violations": 0,
+      "max_boundary_jump": 1.7499999999948113e-05,
+      "max_susceptibility": 0.6649999999999999,
+      "min_susceptibility": 0.06999999999999999,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.85,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.124999999997268e-05,
+      "max_susceptibility": 0.8075,
+      "min_susceptibility": 0.085,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.0,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.4999999999941735e-05,
+      "max_susceptibility": 0.95,
+      "min_susceptibility": 0.1,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.15,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.874999999991079e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.11499999999999999,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.3,
+      "monotone_violations": 0,
+      "max_boundary_jump": 3.249999999987985e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.13,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.7,
+      "monotone_violations": 0,
+      "max_boundary_jump": 1.7499999999948113e-05,
+      "max_susceptibility": 0.6649999999999999,
+      "min_susceptibility": 0.06999999999999999,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.85,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.124999999997268e-05,
+      "max_susceptibility": 0.8075,
+      "min_susceptibility": 0.085,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.0,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.4999999999941735e-05,
+      "max_susceptibility": 0.95,
+      "min_susceptibility": 0.1,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.15,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.874999999991079e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.11499999999999999,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.3,
+      "monotone_violations": 0,
+      "max_boundary_jump": 3.249999999987985e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.13,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.7,
+      "monotone_violations": 0,
+      "max_boundary_jump": 1.7499999999948113e-05,
+      "max_susceptibility": 0.6649999999999999,
+      "min_susceptibility": 0.06999999999999999,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.85,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.124999999997268e-05,
+      "max_susceptibility": 0.8075,
+      "min_susceptibility": 0.085,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.0,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.4999999999941735e-05,
+      "max_susceptibility": 0.95,
+      "min_susceptibility": 0.1,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.15,
+      "monotone_violations": 0,
+      "max_boundary_jump": 2.874999999991079e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.11499999999999999,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.3,
+      "monotone_violations": 0,
+      "max_boundary_jump": 3.249999999987985e-05,
+      "max_susceptibility": 1.0,
+      "min_susceptibility": 0.13,
+      "passed": true
+    }
+  ],
+  "p2_p3": [
+    {
+      "shift": -3.0,
+      "scale": 0.7,
+      "ratios": [
+        0.9026554025081128,
+        0.2386499058495239,
+        0.007950094758046594,
+        0.0036432414748442414
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.36599999999999994,
+        0.2751690140845074,
+        0.15239583333333281,
+        0.10500000000000001
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.85,
+      "ratios": [
+        0.9382118519204322,
+        0.2445178712711905,
+        0.008364422001705993,
+        0.0027365041956770083
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.43799999999999994,
+        0.3341338028169015,
+        0.18505208333333267,
+        0.12749999999999997
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.0,
+      "ratios": [
+        1.0,
+        0.2519024044906997,
+        0.008781233217306672,
+        0.0016910696562144297
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.51,
+        0.39309859154929616,
+        0.21770833333333256,
+        0.15000000000000002
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.15,
+      "ratios": [
+        1.0528411798292914,
+        0.2633405958310515,
+        0.009192002352967648,
+        0.0005644642346273832
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.5819999999999999,
+        0.4520633802816904,
+        0.2503645833333324,
+        0.17249999999999996
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.3,
+      "ratios": [
+        1.0972695918047883,
+        0.28580891880695014,
+        0.009598166546284244,
+        0.0005988291901658428
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.654,
+        0.5110281690140847,
+        0.28302083333333233,
+        0.195
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.7,
+      "ratios": [
+        0.9092142176659685,
+        0.2406988702523731,
+        0.008091922649501758,
+        0.00364306834083361
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.3887500000000001,
+        0.30119718309859167,
+        0.16756249999999945,
+        0.10500000000000001
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.85,
+      "ratios": [
+        0.9493744807111713,
+        0.2504192024987817,
+        0.008536896608892394,
+        0.002736489332587914
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.4656250000000001,
+        0.36573943661971825,
+        0.2034687499999993,
+        0.12749999999999997
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.0,
+      "ratios": [
+        1.0090519282456931,
+        0.26170352716140816,
+        0.008971865514322153,
+        0.0016910690251274612
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.5425000000000001,
+        0.43028169014084516,
+        0.2393749999999992,
+        0.15000000000000002
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.15,
+      "ratios": [
+        1.0588206205401125,
+        0.2815167456762765,
+        0.009533054810737353,
+        0.0005644642301604976
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.6193750000000001,
+        0.49482394366197213,
+        0.27528124999999903,
+        0.17249999999999996
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.3,
+      "ratios": [
+        1.1026901411470342,
+        0.3233674905879779,
+        0.010251391574271067,
+        0.0005988291890499335
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.6962500000000001,
+        0.5593661971830983,
+        0.31118749999999895,
+        0.195
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.7,
+      "ratios": [
+        0.9882633175305124,
+        0.2589344900762992,
+        0.008594600772646784,
+        0.0011845358133089868
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.51475,
+        0.3530399061032864,
+        0.20121354166666627,
+        0.15429166666666597
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.85,
+      "ratios": [
+        1.0602605501741313,
+        0.33069490414339026,
+        0.009158255873328944,
+        0.00047204337218121625
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.6186250000000002,
+        0.4286913145539906,
+        0.2443307291666662,
+        0.1873541666666658
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.0,
+      "ratios": [
+        1.182977431555025,
+        0.7341065974805877,
+        0.010167213968217329,
+        0.0021387234365637356
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.7225000000000005,
+        0.5043427230046947,
+        0.2874479166666661,
+        0.22041666666666562
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.15,
+      "ratios": [
+        1.490081114435806,
+        1.441256063866401,
+        0.032412032056172976,
+        0.0036682147361116755
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.8263750000000002,
+        0.5799941314553991,
+        0.330565104166666,
+        0.25347916666666553
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.3,
+      "ratios": [
+        2.6095041072892347,
+        1.5813704578404624,
+        0.05877751826626391,
+        0.00480677981087356
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.9302500000000005,
+        0.6556455399061034,
+        0.37368229166666594,
+        0.2865416666666654
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.7,
+      "ratios": [
+        1.0337676041532788,
+        0.26561921121777254,
+        0.009228428829232386,
+        0.0006507939096754878
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.5690000000000001,
+        0.41038732394366245,
+        0.25054166666666594,
+        0.19599999999999998
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.85,
+      "ratios": [
+        1.1093745042261152,
+        0.3633638722190352,
+        0.01029606966848104,
+        0.0027913084411951396
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.6845,
+        0.4983274647887325,
+        0.3042291666666658,
+        0.23800000000000002
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.0,
+      "ratios": [
+        1.3060124520890815,
+        1.0635350748001222,
+        0.2467715200450684,
+        0.004634107489294033
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.8000000000000002,
+        0.5862676056338033,
+        0.3579166666666657,
+        0.2800000000000001
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.15,
+      "ratios": [
+        2.1490823583588448,
+        1.3810909930199036,
+        0.16352870454361756,
+        0.0056326092338564735
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.9155000000000001,
+        0.6742077464788742,
+        0.4116041666666655,
+        0.32199999999999995
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.3,
+      "ratios": [
+        4.69552979407616,
+        2.715336489794216,
+        0.2114218990307589,
+        0.004790376939495562
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.9881666666666667,
+        0.7621478873239443,
+        0.4652916666666653,
+        0.36400000000000005
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.7,
+      "ratios": [
+        1.0564803033192336,
+        0.2697858875711049,
+        0.009508167203214927,
+        0.0006507939096753288
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.6026,
+        0.4431690140845074,
+        0.27620833333333245,
+        0.19599999999999998
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.85,
+      "ratios": [
+        1.1639534091640458,
+        0.37116642250151616,
+        0.010784905322545224,
+        0.002791308441195101
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.7253000000000001,
+        0.5381338028169014,
+        0.3353958333333322,
+        0.23800000000000002
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.0,
+      "ratios": [
+        1.4983828559615977,
+        1.0895389410307397,
+        0.42633978538661055,
+        0.004634107489294033
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.8480000000000001,
+        0.6330985915492963,
+        0.3945833333333321,
+        0.2800000000000001
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.15,
+      "ratios": [
+        3.2087426871587335,
+        1.5065942109368742,
+        0.23620933868736205,
+        0.005632609233721126
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.9648666666666668,
+        0.7280633802816909,
+        0.4537708333333319,
+        0.32199999999999995
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.3,
+      "ratios": [
+        4.761273701818066,
+        3.9824023767569146,
+        0.2953551954205391,
+        0.004790390226623518
+      ],
+      "stages": [
+        "学前期",
+        "学龄期",
+        "青春期",
+        "成年早期"
+      ],
+      "openness": [
+        0.99,
+        0.8206572769953054,
+        0.5129583333333316,
+        0.36400000000000005
+      ],
+      "p2_decreasing": true,
+      "p3_weaker_below_half": true
+    }
+  ],
+  "p4": [
+    {
+      "shift": -3.0,
+      "scale": 0.7,
+      "monotone": true,
+      "clean_upper_bound": 8.0,
+      "best_snr": 6.283177594573363,
+      "first_clamped_strength": null,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.85,
+      "monotone": true,
+      "clean_upper_bound": 8.0,
+      "best_snr": 6.166699493789085,
+      "first_clamped_strength": null,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.0,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 6.069759030571125,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.15,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.987842034484286,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.3,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.917856550322387,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.7,
+      "monotone": true,
+      "clean_upper_bound": 8.0,
+      "best_snr": 6.099845279071651,
+      "first_clamped_strength": null,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.85,
+      "monotone": true,
+      "clean_upper_bound": 8.0,
+      "best_snr": 5.992751028710332,
+      "first_clamped_strength": null,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.0,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.904865383664241,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.15,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.831381236274989,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.3,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.769097546959639,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.7,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 6.021773439728517,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.85,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.92099811484114,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.0,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.837429805602555,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.15,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.767068905617166,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.3,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.706959679665132,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.7,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.903193965498298,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.85,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.8091295325712435,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.0,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.733250425136739,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.15,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.670385469255137,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.3,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.629579582340304,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.7,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.895330999683946,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.85,
+      "monotone": true,
+      "clean_upper_bound": 4.0,
+      "best_snr": 5.79598196855655,
+      "first_clamped_strength": 8.0,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.0,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.717164565718853,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.15,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.655841861991072,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.3,
+      "monotone": true,
+      "clean_upper_bound": 2.0,
+      "best_snr": 5.611731490270071,
+      "first_clamped_strength": 4.0,
+      "passed": true
+    }
+  ],
+  "p5": [
+    {
+      "shift": -3.0,
+      "scale": 0.7,
+      "strength": 1.0,
+      "childhood_snr": 5.951135979783094,
+      "adulthood_snr": 4.74623616901104,
+      "decay_ratio": 0.06638242673767564,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.7,
+      "strength": 2.0,
+      "childhood_snr": 5.58268581545925,
+      "adulthood_snr": 4.797792501179217,
+      "decay_ratio": 0.06974998033900043,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.7,
+      "strength": 4.0,
+      "childhood_snr": 5.314795855516817,
+      "adulthood_snr": 4.587105512580631,
+      "decay_ratio": 0.07177399970833054,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.85,
+      "strength": 1.0,
+      "childhood_snr": 5.837227921483422,
+      "adulthood_snr": 4.78711689866406,
+      "decay_ratio": 0.06741586906541738,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.85,
+      "strength": 2.0,
+      "childhood_snr": 5.498915793755291,
+      "adulthood_snr": 4.750395846873838,
+      "decay_ratio": 0.0704877958836515,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 0.85,
+      "strength": 4.0,
+      "childhood_snr": 5.246553021568506,
+      "adulthood_snr": 4.553210036918238,
+      "decay_ratio": 0.07192697538130703,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.0,
+      "strength": 1.0,
+      "childhood_snr": 5.74814956233942,
+      "adulthood_snr": 4.810004679228932,
+      "decay_ratio": 0.0682357072223383,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.0,
+      "strength": 2.0,
+      "childhood_snr": 5.434883487648146,
+      "adulthood_snr": 4.695868428286642,
+      "decay_ratio": 0.07101540535741568,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.0,
+      "strength": 4.0,
+      "childhood_snr": 5.1836339616988285,
+      "adulthood_snr": 4.545802176370416,
+      "decay_ratio": 0.07183062155344085,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.15,
+      "strength": 1.0,
+      "childhood_snr": 5.676282073011617,
+      "adulthood_snr": 4.816001085653777,
+      "decay_ratio": 0.06889773192408294,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.15,
+      "strength": 2.0,
+      "childhood_snr": 5.383576076645252,
+      "adulthood_snr": 4.646432055447669,
+      "decay_ratio": 0.07139243160202748,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.15,
+      "strength": 4.0,
+      "childhood_snr": 5.10864643293241,
+      "adulthood_snr": 4.547613027056644,
+      "decay_ratio": 0.07154731578447109,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.3,
+      "strength": 1.0,
+      "childhood_snr": 5.616903611628875,
+      "adulthood_snr": 4.808440669108571,
+      "decay_ratio": 0.06944056778518766,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.3,
+      "strength": 2.0,
+      "childhood_snr": 5.340539430020667,
+      "adulthood_snr": 4.607116795645538,
+      "decay_ratio": 0.07165342865702519,
+      "passed": true
+    },
+    {
+      "shift": -3.0,
+      "scale": 1.3,
+      "strength": 4.0,
+      "childhood_snr": 5.022872385220708,
+      "adulthood_snr": 4.543675167511156,
+      "decay_ratio": 0.07112604633353771,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.7,
+      "strength": 1.0,
+      "childhood_snr": 5.797034679718413,
+      "adulthood_snr": 4.713974502826518,
+      "decay_ratio": 0.06495215900271692,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.7,
+      "strength": 2.0,
+      "childhood_snr": 5.474429890241477,
+      "adulthood_snr": 4.795207993556757,
+      "decay_ratio": 0.06864312698128079,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.7,
+      "strength": 4.0,
+      "childhood_snr": 5.246333691975927,
+      "adulthood_snr": 4.5871025418481395,
+      "decay_ratio": 0.07110513593715077,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.85,
+      "strength": 1.0,
+      "childhood_snr": 5.6961245197281425,
+      "adulthood_snr": 4.767011021605648,
+      "decay_ratio": 0.06603991475535742,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.85,
+      "strength": 2.0,
+      "childhood_snr": 5.402833290796127,
+      "adulthood_snr": 4.7496751298727515,
+      "decay_ratio": 0.069509350370091,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 0.85,
+      "strength": 4.0,
+      "childhood_snr": 5.185846980363132,
+      "adulthood_snr": 4.553209904976824,
+      "decay_ratio": 0.07135983153360803,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.0,
+      "strength": 1.0,
+      "childhood_snr": 5.61790492510162,
+      "adulthood_snr": 4.798002406149026,
+      "decay_ratio": 0.06693093876053,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.0,
+      "strength": 2.0,
+      "childhood_snr": 5.348525212838996,
+      "adulthood_snr": 4.695686140968245,
+      "decay_ratio": 0.07014374008251262,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.0,
+      "strength": 4.0,
+      "childhood_snr": 5.126636589216568,
+      "adulthood_snr": 4.545802178022367,
+      "decay_ratio": 0.07133989101015684,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.15,
+      "strength": 1.0,
+      "childhood_snr": 5.55527189269295,
+      "adulthood_snr": 4.809083682326276,
+      "decay_ratio": 0.0676688315667053,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.15,
+      "strength": 2.0,
+      "childhood_snr": 5.305107082816144,
+      "adulthood_snr": 4.64639024507434,
+      "decay_ratio": 0.07060875344731003,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.15,
+      "strength": 4.0,
+      "childhood_snr": 5.051531887924002,
+      "adulthood_snr": 4.547613032553852,
+      "decay_ratio": 0.07111624748761622,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.3,
+      "strength": 1.0,
+      "childhood_snr": 5.503882699812619,
+      "adulthood_snr": 4.804573346464395,
+      "decay_ratio": 0.06828621526154892,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.3,
+      "strength": 2.0,
+      "childhood_snr": 5.268493715248194,
+      "adulthood_snr": 4.60710805742133,
+      "decay_ratio": 0.0709426690979258,
+      "passed": true
+    },
+    {
+      "shift": -2.0,
+      "scale": 1.3,
+      "strength": 4.0,
+      "childhood_snr": 4.954176335428238,
+      "adulthood_snr": 4.543675169475269,
+      "decay_ratio": 0.07074286082053051,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.7,
+      "strength": 1.0,
+      "childhood_snr": 5.726354862234736,
+      "adulthood_snr": 4.856415165675136,
+      "decay_ratio": 0.07217166109826467,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.7,
+      "strength": 2.0,
+      "childhood_snr": 5.422673706139208,
+      "adulthood_snr": 4.6775373062674,
+      "decay_ratio": 0.07289435095730172,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.7,
+      "strength": 4.0,
+      "childhood_snr": 5.186654472784452,
+      "adulthood_snr": 4.544696801116176,
+      "decay_ratio": 0.07257355367898607,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.85,
+      "strength": 1.0,
+      "childhood_snr": 5.630709544564405,
+      "adulthood_snr": 4.843964108440958,
+      "decay_ratio": 0.07238216517719459,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.85,
+      "strength": 2.0,
+      "childhood_snr": 5.35480273672405,
+      "adulthood_snr": 4.605849601147245,
+      "decay_ratio": 0.07301608227134056,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 0.85,
+      "strength": 4.0,
+      "childhood_snr": 5.098326458337268,
+      "adulthood_snr": 4.549499701712193,
+      "decay_ratio": 0.07188360879065334,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.0,
+      "strength": 1.0,
+      "childhood_snr": 5.557038812334717,
+      "adulthood_snr": 4.805609062387696,
+      "decay_ratio": 0.07255967802630096,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.0,
+      "strength": 2.0,
+      "childhood_snr": 5.301592205556226,
+      "adulthood_snr": 4.564000309055395,
+      "decay_ratio": 0.07302744264736725,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.0,
+      "strength": 4.0,
+      "childhood_snr": 4.881179763360925,
+      "adulthood_snr": 4.51922606201032,
+      "decay_ratio": 0.07101169033291019,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.15,
+      "strength": 1.0,
+      "childhood_snr": 5.498351441004652,
+      "adulthood_snr": 4.756954666035032,
+      "decay_ratio": 0.07270824309897785,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.15,
+      "strength": 2.0,
+      "childhood_snr": 5.255994425567257,
+      "adulthood_snr": 4.545751678714204,
+      "decay_ratio": 0.07293372834611983,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.15,
+      "strength": 4.0,
+      "childhood_snr": 1.770864401362859,
+      "adulthood_snr": 4.429705767958621,
+      "decay_ratio": 0.06847917357457653,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.3,
+      "strength": 1.0,
+      "childhood_snr": 5.450285950961818,
+      "adulthood_snr": 4.707816033189436,
+      "decay_ratio": 0.0728290992460284,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.3,
+      "strength": 2.0,
+      "childhood_snr": 5.213912684779528,
+      "adulthood_snr": 4.542531031444151,
+      "decay_ratio": 0.07274526303324318,
+      "passed": true
+    },
+    {
+      "shift": 0.0,
+      "scale": 1.3,
+      "strength": 4.0,
+      "childhood_snr": 1.3384508605596293,
+      "adulthood_snr": 4.2835931345490375,
+      "decay_ratio": 0.06621056422749626,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.7,
+      "strength": 1.0,
+      "childhood_snr": 5.637912684895967,
+      "adulthood_snr": 4.80787123319995,
+      "decay_ratio": 0.07250617594443627,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.7,
+      "strength": 2.0,
+      "childhood_snr": 5.372648465619209,
+      "adulthood_snr": 4.605629506492475,
+      "decay_ratio": 0.07340038198044249,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.7,
+      "strength": 4.0,
+      "childhood_snr": 5.121867124270686,
+      "adulthood_snr": 4.543168521033265,
+      "decay_ratio": 0.07201467745272706,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.85,
+      "strength": 1.0,
+      "childhood_snr": 5.555460323951554,
+      "adulthood_snr": 4.7701128927630565,
+      "decay_ratio": 0.07286365140336853,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.85,
+      "strength": 2.0,
+      "childhood_snr": 5.309624012929521,
+      "adulthood_snr": 4.561955456998128,
+      "decay_ratio": 0.07336538949751746,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 0.85,
+      "strength": 4.0,
+      "childhood_snr": 4.968531573696095,
+      "adulthood_snr": 4.480904878859243,
+      "decay_ratio": 0.07082048517533131,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.0,
+      "strength": 1.0,
+      "childhood_snr": 5.4916059188823585,
+      "adulthood_snr": 4.719994527676634,
+      "decay_ratio": 0.07310863527503975,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.0,
+      "strength": 2.0,
+      "childhood_snr": 5.2559463618213815,
+      "adulthood_snr": 4.546960356615277,
+      "decay_ratio": 0.0731599680232813,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.0,
+      "strength": 4.0,
+      "childhood_snr": 4.71070272103727,
+      "adulthood_snr": 4.323458557995385,
+      "decay_ratio": 0.05505154079488139,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.15,
+      "strength": 1.0,
+      "childhood_snr": 5.440217717305751,
+      "adulthood_snr": 4.670624722102891,
+      "decay_ratio": 0.07327128372572093,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.15,
+      "strength": 2.0,
+      "childhood_snr": 5.2059576396528735,
+      "adulthood_snr": 4.5465357261293375,
+      "decay_ratio": 0.07281603854977187,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.15,
+      "strength": 4.0,
+      "childhood_snr": 0.9574649045102898,
+      "adulthood_snr": 4.0976535978904725,
+      "decay_ratio": 0.06264460132567709,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.3,
+      "strength": 1.0,
+      "childhood_snr": 5.405396675754268,
+      "adulthood_snr": 4.628476984878619,
+      "decay_ratio": 0.07342761071839247,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.3,
+      "strength": 2.0,
+      "childhood_snr": 5.161454510654264,
+      "adulthood_snr": 4.547406617699491,
+      "decay_ratio": 0.07239704582626255,
+      "passed": true
+    },
+    {
+      "shift": 2.0,
+      "scale": 1.3,
+      "strength": 4.0,
+      "childhood_snr": 0.6856449552072903,
+      "adulthood_snr": 3.8691080580202954,
+      "decay_ratio": 0.06048917685202718,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.7,
+      "strength": 1.0,
+      "childhood_snr": 5.615950728912168,
+      "adulthood_snr": 4.807853701589058,
+      "decay_ratio": 0.07105072410315659,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.7,
+      "strength": 2.0,
+      "childhood_snr": 5.350451005771652,
+      "adulthood_snr": 4.605629504783464,
+      "decay_ratio": 0.07256477766331862,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.7,
+      "strength": 4.0,
+      "childhood_snr": 5.070545381414493,
+      "adulthood_snr": 4.54316852103752,
+      "decay_ratio": 0.0715756924123885,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.85,
+      "strength": 1.0,
+      "childhood_snr": 5.532843992777874,
+      "adulthood_snr": 4.7701083699271996,
+      "decay_ratio": 0.07160553152721474,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.85,
+      "strength": 2.0,
+      "childhood_snr": 5.2875340414619245,
+      "adulthood_snr": 4.561955459087097,
+      "decay_ratio": 0.07266124971151008,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 0.85,
+      "strength": 4.0,
+      "childhood_snr": 4.871715593298966,
+      "adulthood_snr": 4.480904878859297,
+      "decay_ratio": 0.07046030204934697,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.0,
+      "strength": 1.0,
+      "childhood_snr": 5.468881121709114,
+      "adulthood_snr": 4.719993565004256,
+      "decay_ratio": 0.07200188036713717,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.0,
+      "strength": 2.0,
+      "childhood_snr": 5.233331785765576,
+      "adulthood_snr": 4.546960357102171,
+      "decay_ratio": 0.07255299685705413,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.0,
+      "strength": 4.0,
+      "childhood_snr": 5.547871882968171,
+      "adulthood_snr": 4.323458557995385,
+      "decay_ratio": 0.046184369035110716,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.15,
+      "strength": 1.0,
+      "childhood_snr": 5.419900387220891,
+      "adulthood_snr": 4.670624545378567,
+      "decay_ratio": 0.07229152489906265,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.15,
+      "strength": 2.0,
+      "childhood_snr": 5.180010029141867,
+      "adulthood_snr": 4.546535726222332,
+      "decay_ratio": 0.07228879036733618,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.15,
+      "strength": 4.0,
+      "childhood_snr": 0.7693931861530081,
+      "adulthood_snr": 4.0976535978829975,
+      "decay_ratio": 0.05982959964916679,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.3,
+      "strength": 1.0,
+      "childhood_snr": 5.385070319913584,
+      "adulthood_snr": 4.6284769622771345,
+      "decay_ratio": 0.07263708946116933,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.3,
+      "strength": 2.0,
+      "childhood_snr": 5.123970703768807,
+      "adulthood_snr": 4.547406617714898,
+      "decay_ratio": 0.0719791878377899,
+      "passed": true
+    },
+    {
+      "shift": 3.0,
+      "scale": 1.3,
+      "strength": 4.0,
+      "childhood_snr": 0.5017148838383751,
+      "adulthood_snr": 3.8691086893701683,
+      "decay_ratio": 0.05811086430927161,
+      "passed": true
+    }
+  ],
+  "summary": {
+    "robustness": {
+      "p1_all_pass": true,
+      "p2_all_pass": true,
+      "p3_all_pass": true,
+      "p4_all_pass": true,
+      "p5_pass_rate": 1.0
+    },
+    "tallies": {
+      "P1 易感性阶梯单调且连续": "25/25",
+      "P2 效力比随阶段单调递减": "25/25",
+      "P3 易感性<0.5 阶段影响更弱": "25/25",
+      "P4 剂量-反应单调且信噪比>2": "25/25",
+      "P5 成年后留痕": "75/75"
+    },
+    "clean_upper_bound_range": [
+      2.0,
+      4.0,
+      8.0
+    ]
+  },
+  "verdicts": [
+    {
+      "claim": "P1 在全部 25 个参数组合下成立",
+      "robust": true
+    },
+    {
+      "claim": "P2 在全部 25 个参数组合下成立",
+      "robust": true
+    },
+    {
+      "claim": "P3 在全部 25 个参数组合下成立",
+      "robust": true
+    },
+    {
+      "claim": "P4 在全部 25 个参数组合下成立",
+      "robust": true
+    },
+    {
+      "claim": "P5 在 100% 的参数组合下成立",
+      "robust": true
+    }
+  ]
+}

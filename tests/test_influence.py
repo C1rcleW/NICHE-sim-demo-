@@ -79,6 +79,46 @@ def test_initial_influence_stock_only_for_adults() -> None:
     assert initial_influence_stock(10) == 0.0
 
 
+def test_susceptibility_scale_preserves_shape_and_monotonicity() -> None:
+    """易感性缩放必须保持阶段形状与单调性（敏感性分析用的扰动参数）。
+
+    回归：重写该函数时曾把"进入第一阶段"的过渡也计入，导致所有正年龄的
+    易感性被额外递减到 0——单调性检查抓不到，必须比对基准值才能发现。
+    """
+    baseline = [susceptibility(age) for age in (0, 2, 5, 9, 15, 25, 50)]
+    assert baseline == pytest.approx([0.95, 0.85, 0.75, 0.50, 0.28, 0.15, 0.10], abs=1e-9)
+
+    for scale in (0.70, 0.85, 1.15, 1.30):
+        ages = [i * 0.25 for i in range(0, 200)]
+        values = [susceptibility(age, scale=scale) for age in ages]
+        assert all(b <= a + 1e-12 for a, b in zip(values, values[1:])), (
+            f"scale={scale} 破坏单调性"
+        )
+        assert 0.0 <= min(values) and max(values) <= 1.0, f"scale={scale} 越界"
+        # 缩放应等比例作用（未钳位处）
+        for age in (9.0, 15.0, 25.0):
+            expected = baseline[[0, 2, 5, 9, 15, 25, 50].index(age)] * scale
+            assert susceptibility(age, scale=scale) == pytest.approx(expected, abs=1e-9)
+
+
+def test_stage_shift_moves_boundaries() -> None:
+    """阶段平移应把边界整体挪动：正 shift = 阶段推迟到来。"""
+    # 9 岁在边界 6 与 12 之间，基准易感性 0.50
+    assert susceptibility(9.0) == pytest.approx(0.50, abs=1e-9)
+    # 阶段推迟 3 年：9 岁相当于原来的 6 岁，仍在学前期→学龄期边界附近
+    assert susceptibility(9.0, shift=3.0) > susceptibility(9.0)
+    # 阶段提前 3 年：9 岁相当于原来的 12 岁，已是青春期
+    assert susceptibility(9.0, shift=-3.0) < susceptibility(9.0)
+
+    # 平移不改变曲线形状，只平移它
+    for shift in (-3.0, -2.0, 2.0, 3.0):
+        ages = [i * 0.25 for i in range(0, 240)]
+        values = [susceptibility(age, shift=shift) for age in ages]
+        assert all(b <= a + 1e-12 for a, b in zip(values, values[1:])), (
+            f"shift={shift} 破坏单调性"
+        )
+
+
 def test_is_influencing_switches_at_adulthood() -> None:
     assert not is_influencing(ADULTHOOD_AGE - 0.1)
     assert is_influencing(ADULTHOOD_AGE + 0.1)

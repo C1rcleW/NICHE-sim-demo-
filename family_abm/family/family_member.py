@@ -48,6 +48,10 @@ DEFAULT_PARAMS: dict[str, float] = {
     "income_support": 0.0,                  # 家庭收入支持（儿童津贴类政策的作用点）
     "use_life_stage_susceptibility": 1.0,   # 1 = 阶段易感性；0 = 恒定（消融对照）
     "role_switch": 1.0,                     # 1 = 成年后转为施加影响；0 = 关闭（消融对照）
+    # 易感性曲线的形状参数。埃里克森本人未给出精确年龄边界，取值属模型参数，
+    # 因此这两个参数用于敏感性分析，检验结论对它们的依赖程度。
+    "susceptibility_scale": 1.0,            # 整体缩放易感性（保持阶段形状）
+    "stage_shift_years": 0.0,               # 阶段边界平移（年），正 = 阶段推迟到来
 }
 
 

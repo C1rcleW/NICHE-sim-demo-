@@ -175,7 +175,7 @@ def stack_std(series_list: list[np.ndarray]) -> np.ndarray:
 # ── E2 影响量的年龄结构 ─────────────────────────────────────────────────────
 
 
-def e2_stage_profile(seeds: list[int], strength: float) -> dict:
+def e2_stage_profile(seeds: list[int], strength: float, extra_params: dict | None = None) -> dict:
     """阶段易感性在各发展阶段的**实际效力**：承受影响量之比。
 
     注意（这是对最初假设的修正）
@@ -205,6 +205,7 @@ def e2_stage_profile(seeds: list[int], strength: float) -> dict:
             "influence_strength": strength,
             "use_life_stage_susceptibility": flag,
             "role_switch": 1.0,
+            **(extra_params or {}),
         })
 
     staged = ensembles["staged"]
@@ -259,7 +260,8 @@ def e2_stage_profile(seeds: list[int], strength: float) -> dict:
 # ── E3 剂量-反应关系 ────────────────────────────────────────────────────────
 
 
-def e3_dose_response(seeds: list[int], strengths: list[float]) -> dict:
+def e3_dose_response(seeds: list[int], strengths: list[float],
+                     extra_params: dict | None = None) -> dict:
     """影响强度 → 轨迹偏离：应单调增大，并呈现饱和。
 
     **配对设计**：同一 seed 下比较"有影响"与"无影响"的子代轨迹，再对差值取
@@ -267,13 +269,15 @@ def e3_dose_response(seeds: list[int], strengths: list[float]) -> dict:
     而机制效应只有 0.02 量级——配对后噪声来自种子内的随机时间序列，
     量级小得多，信噪比才能反映真实可分辨性。
     """
-    baseline_by_seed = run_ensemble(seeds, {"influence_strength": 0.0})["child_happiness"]
+    baseline_by_seed = run_ensemble(seeds, {"influence_strength": 0.0,
+                                            **(extra_params or {})})["child_happiness"]
 
     points = []
     for strength in strengths:
         ensemble = run_ensemble(seeds, {"influence_strength": strength,
                                         "use_life_stage_susceptibility": 1.0,
-                                        "role_switch": 1.0})
+                                        "role_switch": 1.0,
+                                        **(extra_params or {})})
         paired = []
         for base_series, treat_series in zip(baseline_by_seed, ensemble["child_happiness"]):
             length = min(len(base_series), len(treat_series))
@@ -329,7 +333,8 @@ def e3_dose_response(seeds: list[int], strengths: list[float]) -> dict:
 # ── E4 代际更新的滞后效应 ───────────────────────────────────────────────────
 
 
-def e4_lagged_effect(seeds: list[int], strength: float) -> dict:
+def e4_lagged_effect(seeds: list[int], strength: float,
+                     extra_params: dict | None = None) -> dict:
     """父母影响是否在子代成年后仍留下可测差异（滞后效应）。
 
     **配对设计**：同一 seed 下比较"全程有影响"与"无影响"，对差值取系综均值。
@@ -338,8 +343,9 @@ def e4_lagged_effect(seeds: list[int], strength: float) -> dict:
     差异远小于童年期。这里如实测量衰减幅度，而不是假定它必然持久。
     """
     full = run_ensemble(seeds, {"influence_strength": strength,
-                                "use_life_stage_susceptibility": 1.0, "role_switch": 1.0})
-    none = run_ensemble(seeds, {"influence_strength": 0.0})
+                                "use_life_stage_susceptibility": 1.0, "role_switch": 1.0,
+                                **(extra_params or {})})
+    none = run_ensemble(seeds, {"influence_strength": 0.0, **(extra_params or {})})
 
     ages = stack_mean(full["child_age"])
     paired = []

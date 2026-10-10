@@ -73,22 +73,41 @@ def life_stage_of(age: float) -> str:
     return stage_for_age(age)[4]
 
 
-def susceptibility(age: float, half_width: float = TRANSITION_HALF_WIDTH) -> float:
+def susceptibility(
+    age: float,
+    half_width: float = TRANSITION_HALF_WIDTH,
+    scale: float = 1.0,
+    shift: float = 0.0,
+) -> float:
     """年龄 ``age`` 处的易感性，阶段边界处线性过渡。
 
     易感性随年龄单调不增；`half_width=0` 时退化为硬切换（不推荐，会让影响量跳变）。
-    """
-    if age <= 0:
-        return ERIKSON_STAGES[0][2]
 
+    Parameters
+    ----------
+    scale : float
+        整体缩放因子。用于敏感性分析：把整条曲线按比例抬高/压低，
+        同时保持阶段形状。结果钳位在 ``[0, 1]``（易感性是比例量，不应越界）。
+    shift : float
+        阶段边界整体平移（年）。正值表示阶段**推迟**到来：
+        即按 ``age - shift`` 查表。用于敏感性分析——阶段年龄边界是模型参数，
+        埃里克森本人并未给出精确年龄，因此必须检验结论对它的依赖。
+    """
+    lookup_age = age - shift
+    if lookup_age <= 0:
+        return min(1.0, max(0.0, ERIKSON_STAGES[0][2] * scale))
+
+    # 以第一阶段为起点，逐个叠加阶段之间的过渡量。
+    # 注意必须从 index=1 开始：index=0 对应"进入第一阶段"的过渡，
+    # 对所有正年龄都已完全生效，把它计入会额外扣除第一段的易感性。
     value = ERIKSON_STAGES[0][2]
     for index in range(1, len(ERIKSON_STAGES)):
         boundary = ERIKSON_STAGES[index][0]
         previous = ERIKSON_STAGES[index - 1][2]
         current = ERIKSON_STAGES[index][2]
-        weight = _smooth_step(age, boundary, half_width)
+        weight = _smooth_step(lookup_age, boundary, half_width)
         value += (current - previous) * weight
-    return value
+    return min(1.0, max(0.0, value * scale))
 
 
 def _smooth_step(age: float, boundary: float, half_width: float) -> float:
@@ -189,7 +208,15 @@ def apply_influence(
         return 0.0
 
     use_stages = float(params.get("use_life_stage_susceptibility", 1.0) or 0.0) >= 0.5
-    openness = susceptibility(age) if use_stages else 0.50
+    openness = (
+        susceptibility(
+            age,
+            scale=float(params.get("susceptibility_scale", 1.0) or 1.0),
+            shift=float(params.get("stage_shift_years", 0.0) or 0.0),
+        )
+        if use_stages
+        else 0.50
+    )
     member.set_state_value("susceptibility", openness)
 
     sources = select_sources(member, household, role_switch)
