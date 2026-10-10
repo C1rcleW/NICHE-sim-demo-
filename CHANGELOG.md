@@ -135,4 +135,4 @@
 - `0.1.0` 的 API 尚未稳定，次版本号可能包含不兼容改动
 - 报告问题请附操作系统与依赖版本、最小复现脚本（含随机种子）；数值问题请附 `python tools/baseline.py --check` 的差异输出
 
-[0.1.0]: https://github.com/C1rcleW/NICHE-sim-demo-/releases/tag/v0.1.0
+[0.1.0]: https://github.com/C1rcleW/NICHE-sim-Framework/releases/tag/v0.1.0

@@ -1,0 +1,29 @@
+# CITATION.cff — GitHub 会据此渲染仓库侧栏的「Cite this repository」按钮
+# 规范见 https://citation-file-format.github.io/
+cff-version: 1.2.0
+message: "如在研究中使用本框架，请按以下格式引用。"
+title: "Family ABM：家庭社会小生境智能体建模框架"
+abstract: >-
+  一个用于模拟家庭社会小生境的智能体建模框架。含代际影响机制（影响力 ×
+  易感性的分离表述，易感性随埃里克森心理社会发展阶段阶梯下降）、家庭经济
+  压力传导、兰彻斯特型 ODE 拟合、以及交互式 Web 仪表板。附四项可证伪的
+  机制检验与覆盖 25–75 个参数组合的敏感性分析。本工作是方法性探索，
+  不是政策效果评估。
+type: software
+authors:
+  - alias: C1rcleW
+repository-code: "https://github.com/C1rcleW/NICHE-sim-Framework"
+url: "https://github.com/C1rcleW/NICHE-sim-Framework"
+license: MIT
+version: "0.1.0"
+date-released: "2026-10-10"
+keywords:
+  - agent-based-model
+  - computational-social-science
+  - social-niche
+  - intergenerational-transmission
+  - life-course
+  - family-stress-model
+  - social-policy
+  - ode
+  - lanchester

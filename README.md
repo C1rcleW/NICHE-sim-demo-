@@ -1,6 +1,6 @@
 # Family ABM — 家庭社会小生境智能体建模框架
 
-[![CI](https://github.com/C1rcleW/NICHE-sim-demo-/actions/workflows/ci.yml/badge.svg)](https://github.com/C1rcleW/NICHE-sim-demo-/actions/workflows/ci.yml)
+[![CI](https://github.com/C1rcleW/NICHE-sim-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/C1rcleW/NICHE-sim-Framework/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Code style](https://img.shields.io/badge/lint-ruff-000000)](https://github.com/astral-sh/ruff)
@@ -377,7 +377,7 @@ CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试
   title  = {Family ABM: 家庭社会小生境智能体建模框架},
   author = {C1rcleW},
   year   = {2026},
-  url    = {https://github.com/C1rcleW/NICHE-sim-demo-},
+  url    = {https://github.com/C1rcleW/NICHE-sim-Framework},
   note   = {Version 0.1.0}
 }
 ```
@@ -393,6 +393,6 @@ CI 在 Python 3.10 / 3.12 / 3.13（Ubuntu）与 3.12（Windows）上运行测试
 ## 版本
 
 当前版本 **0.1.0**（首个公开版本）。变更历史见 [CHANGELOG.md](CHANGELOG.md)，
-发布产物见 [Releases](https://github.com/C1rcleW/NICHE-sim-demo-/releases)。
+发布产物见 [Releases](https://github.com/C1rcleW/NICHE-sim-Framework/releases)。
 
 `0.x` 阶段的 API 尚未稳定，次版本号可能包含不兼容改动。

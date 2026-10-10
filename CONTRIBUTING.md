@@ -11,8 +11,8 @@
 ## 开发环境
 
 ```bash
-git clone https://github.com/C1rcleW/NICHE-sim-demo-.git
-cd NICHE-sim-demo-
+git clone https://github.com/C1rcleW/NICHE-sim-Framework.git
+cd NICHE-sim-Framework
 pip install -e ".[dev]"
 python -m pytest tests/ -q
 ```
